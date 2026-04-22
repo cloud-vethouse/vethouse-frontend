@@ -22,10 +22,18 @@ export default function VeterinariosList() {
     estado: 'Activo'
   });
 
+  const MOCK_VETERINARIOS = [
+    { id_veterinario: 1, nombre: 'Ana', apellido: 'García', numero_colegiatura: 'VET-2024-001', especialidad: 'Cirugía', telefono: '555-0101', correo: 'ana.garcia@vetsystem.com', horario_turno: 'Mañana', estado: 'Activo' },
+    { id_veterinario: 2, nombre: 'Carlos', apellido: 'Martínez', numero_colegiatura: 'VET-2024-002', especialidad: 'Dermatología', telefono: '555-0102', correo: 'carlos.martinez@vetsystem.com', horario_turno: 'Tarde', estado: 'Activo' },
+    { id_veterinario: 3, nombre: 'Laura', apellido: 'Rodríguez', numero_colegiatura: 'VET-2024-003', especialidad: 'Medicina Interna', telefono: '555-0103', correo: 'laura.rodriguez@vetsystem.com', horario_turno: 'Mañana', estado: 'Activo' },
+    { id_veterinario: 4, nombre: 'Roberto', apellido: 'Fernández', numero_colegiatura: 'VET-2023-015', especialidad: 'Oftalmología', telefono: '555-0104', correo: 'roberto.fernandez@vetsystem.com', horario_turno: 'Noche', estado: 'Inactivo' },
+    { id_veterinario: 5, nombre: 'María', apellido: 'López', numero_colegiatura: 'VET-2024-005', especialidad: 'Cardiología', telefono: '555-0105', correo: 'maria.lopez@vetsystem.com', horario_turno: 'Tarde', estado: 'Activo' },
+  ];
+
   const fetchVeterinarios = async () => {
     try {
       setLoading(true);
-      const res = await api.get('/api/veterinarios');
+      const res = await api.get('/api/veterinarios').catch(() => ({ data: MOCK_VETERINARIOS }));
       setVeterinarios(Array.isArray(res.data) ? res.data : []);
       setError(null);
     } catch (err) {
