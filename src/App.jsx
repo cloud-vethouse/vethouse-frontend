@@ -6,6 +6,7 @@ import AnalyticsDashboard from './pages/Analytics/AnalyticsDashboard';
 import VeterinariosList from './pages/Veterinarios/VeterinariosList';
 import CitasList from './pages/Citas/CitasList';
 import TratamientosList from './pages/Tratamientos/TratamientosList';
+import HistorialView from './pages/Historial/HistorialView';
 import Layout from './components/Layout';
 
 // Componentes Placeholder para las rutas no implementadas aún
@@ -32,7 +33,7 @@ function App() {
         <Route path="/citas" element={<CitasList />} />
         <Route path="/tratamientos" element={<TratamientosList />} />
         <Route path="/veterinarios" element={<VeterinariosList />} />
-        <Route path="/historial" element={<PlaceholderPage title="Historial Clínico" />} />
+        <Route path="/historial" element={<HistorialView />} />
         
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/analytics" replace />} />
