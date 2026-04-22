@@ -5,6 +5,7 @@ import DuenosList from './pages/Duenos/DuenosList';
 import AnalyticsDashboard from './pages/Analytics/AnalyticsDashboard';
 import VeterinariosList from './pages/Veterinarios/VeterinariosList';
 import CitasList from './pages/Citas/CitasList';
+import TratamientosList from './pages/Tratamientos/TratamientosList';
 import Layout from './components/Layout';
 
 // Componentes Placeholder para las rutas no implementadas aún
@@ -29,7 +30,7 @@ function App() {
         
         {/* Rutas Placeholder (Requeridas por el Layout) */}
         <Route path="/citas" element={<CitasList />} />
-        <Route path="/tratamientos" element={<PlaceholderPage title="Tratamientos" />} />
+        <Route path="/tratamientos" element={<TratamientosList />} />
         <Route path="/veterinarios" element={<VeterinariosList />} />
         <Route path="/historial" element={<PlaceholderPage title="Historial Clínico" />} />
         
