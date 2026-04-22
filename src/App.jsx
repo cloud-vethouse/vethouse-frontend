@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import MascotasList from './pages/Mascotas/MascotasList';
 import DuenosList from './pages/Duenos/DuenosList';
 import AnalyticsDashboard from './pages/Analytics/AnalyticsDashboard';
+import VeterinariosList from './pages/Veterinarios/VeterinariosList';
 import Layout from './components/Layout';
 
 // Componentes Placeholder para las rutas no implementadas aún
@@ -28,7 +29,7 @@ function App() {
         {/* Rutas Placeholder (Requeridas por el Layout) */}
         <Route path="/citas" element={<PlaceholderPage title="Citas" />} />
         <Route path="/tratamientos" element={<PlaceholderPage title="Tratamientos" />} />
-        <Route path="/veterinarios" element={<PlaceholderPage title="Veterinarios" />} />
+        <Route path="/veterinarios" element={<VeterinariosList />} />
         <Route path="/historial" element={<PlaceholderPage title="Historial Clínico" />} />
         
         {/* Fallback */}
