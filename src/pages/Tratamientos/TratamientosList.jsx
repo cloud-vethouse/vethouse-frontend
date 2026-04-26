@@ -83,8 +83,21 @@ export default function TratamientosList() {
 
   const formatFecha = (fechaStr) => {
     if (!fechaStr) return '-';
-    const date = new Date(fechaStr + 'T00:00:00');
-    return date.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
+    const rawDate = String(fechaStr).trim();
+    const datePart = rawDate.includes('T') ? rawDate.split('T')[0] : rawDate;
+    const [year, month, day] = datePart.split('-').map(Number);
+
+    if (!year || !month || !day) return '-';
+
+    const date = new Date(Date.UTC(year, month - 1, day));
+    if (Number.isNaN(date.getTime())) return '-';
+
+    return new Intl.DateTimeFormat('es-ES', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      timeZone: 'UTC'
+    }).format(date);
   };
 
   const getEstadoBadgeClass = (estado) => {
