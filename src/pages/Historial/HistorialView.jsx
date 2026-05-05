@@ -12,78 +12,11 @@ export default function HistorialView() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const MOCK_HISTORIALES = [
-    {
-      mascota: {
-        id_mascota: 1, nombre: 'Luna', especie: 'Perro', raza: 'Golden Retriever',
-        sexo: 'Hembra', fecha_nacimiento: '2020-05-15', estado_reproductivo: 'Castrada',
-        dueno: { nombre: 'Juan', apellido: 'Pérez', telefono: '555-0001', correo: 'juan.perez@email.com' }
-      },
-      citas: [
-        { id_cita: 1, fecha_hora_inicio: '2026-04-21T09:00', nombre_veterinario: 'Ana García', motivo_consulta: 'Vacunación anual', tipo_cita: 'Preventiva', estado: 'Confirmada' },
-        { id_cita: 4, fecha_hora_inicio: '2026-04-20T14:00', nombre_veterinario: 'Ana García', motivo_consulta: 'Revisión post-cirugía', tipo_cita: 'Seguimiento', estado: 'Completada' },
-        { id_cita: 6, fecha_hora_inicio: '2026-03-15T10:00', nombre_veterinario: 'Laura Rodríguez', motivo_consulta: 'Control de peso', tipo_cita: 'Seguimiento', estado: 'Completada' },
-      ],
-      tratamientos: [
-        { id_tratamiento: 1, tipo_procedimiento: 'Vacunación', fecha_procedimiento: '2026-04-15', descripcion: 'Vacuna triple felina + rabia', costo_referencial: 120.00, estado: 'Completado' },
-        { id_tratamiento: 7, tipo_procedimiento: 'Cirugía', fecha_procedimiento: '2026-03-01', descripcion: 'Esterilización', costo_referencial: 400.00, estado: 'Completado' },
-      ]
-    },
-    {
-      mascota: {
-        id_mascota: 2, nombre: 'Max', especie: 'Perro', raza: 'Labrador',
-        sexo: 'Macho', fecha_nacimiento: '2019-08-22', estado_reproductivo: 'Entero',
-        dueno: { nombre: 'María', apellido: 'González', telefono: '555-0002', correo: 'maria.gonzalez@email.com' }
-      },
-      citas: [
-        { id_cita: 2, fecha_hora_inicio: '2026-04-21T10:00', nombre_veterinario: 'Carlos Martínez', motivo_consulta: 'Dolor de oreja', tipo_cita: 'Urgencia', estado: 'En curso' },
-      ],
-      tratamientos: [
-        { id_tratamiento: 2, tipo_procedimiento: 'Cirugía', fecha_procedimiento: '2026-04-10', descripcion: 'Esterilización laparoscópica', costo_referencial: 450.00, estado: 'Completado' },
-      ]
-    },
-    {
-      mascota: {
-        id_mascota: 3, nombre: 'Mimi', especie: 'Gato', raza: 'Siamés',
-        sexo: 'Hembra', fecha_nacimiento: '2021-02-10', estado_reproductivo: 'Castrada',
-        dueno: { nombre: 'Pedro', apellido: 'López', telefono: '555-0003', correo: 'pedro.lopez@email.com' }
-      },
-      citas: [
-        { id_cita: 3, fecha_hora_inicio: '2026-04-22T11:00', nombre_veterinario: 'Laura Rodríguez', motivo_consulta: 'Control peso', tipo_cita: 'Seguimiento', estado: 'Pendiente' },
-      ],
-      tratamientos: [
-        { id_tratamiento: 3, tipo_procedimiento: 'Desparasitación', fecha_procedimiento: '2026-04-20', descripcion: 'Dosis interna + externa', costo_referencial: 85.00, estado: 'Pendiente' },
-      ]
-    },
-    {
-      mascota: {
-        id_mascota: 4, nombre: 'Rocky', especie: 'Perro', raza: 'Bulldog',
-        sexo: 'Macho', fecha_nacimiento: '2018-11-05', estado_reproductivo: 'Entero',
-        dueno: { nombre: 'Ana', apellido: 'Martínez', telefono: '555-0004', correo: 'ana.martinez@email.com' }
-      },
-      citas: [
-        { id_cita: 5, fecha_hora_inicio: '2026-04-22T16:00', nombre_veterinario: 'Carlos Martínez', motivo_consulta: 'Cojera persistente', tipo_cita: 'Consulta general', estado: 'Cancelada' },
-      ],
-      tratamientos: [
-        { id_tratamiento: 5, tipo_procedimiento: 'Limpieza dental', fecha_procedimiento: '2026-04-18', descripcion: 'Profilaxis con ultrasonido', costo_referencial: 150.00, estado: 'Completado' },
-      ]
-    },
-    {
-      mascota: {
-        id_mascota: 5, nombre: 'Coco', especie: 'Ave', raza: 'Cacatúa',
-        sexo: 'Macho', fecha_nacimiento: '2022-01-15', estado_reproductivo: 'Entero',
-        dueno: { nombre: 'Luis', apellido: 'Hernández', telefono: '555-0005', correo: 'luis.hernandez@email.com' }
-      },
-      citas: [],
-      tratamientos: []
-    }
-  ];
-
   const fetchHistoriales = async () => {
     try {
       setLoading(true);
       setError(null);
-      const res = await api.get('/api/historial').catch(() => ({ data: MOCK_HISTORIALES }));
+      const res = await api.get('/api/historial');
       const data = Array.isArray(res.data) ? res.data : [];
       setHistoriales(data);
       setSelectedHistoryId((current) => current || data[0]?.mascota?.id_mascota || null);
@@ -273,7 +206,7 @@ export default function HistorialView() {
                     <tbody className="divide-y divide-gray-200">
                       {historialSeleccionado.citas.map((cita, idx) => (
                         <tr key={cita.id_cita || idx} className="hover:bg-gray-50 transition-colors">
-                          <td className="px-4 py-3 text-sm text-gray-600">{formatFechaHora(cita.fecha_hora_inicio)}</td>
+                          <td className="px-4 py-3 text-sm text-gray-600">{formatFechaHora(cita.fecha_hora)}</td>
                           <td className="px-4 py-3 text-sm text-gray-600">{cita.nombre_veterinario || cita.id_veterinario}</td>
                           <td className="px-4 py-3 text-sm text-gray-600">{cita.motivo_consulta}</td>
                           <td className="px-4 py-3 text-sm text-gray-600">

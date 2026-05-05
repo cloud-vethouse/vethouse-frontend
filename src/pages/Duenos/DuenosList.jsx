@@ -12,12 +12,10 @@ export default function DuenosList() {
   const [error, setError] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [formData, setFormData] = useState({
-    nombre: '',
-    apellido: '',
-    documento_identidad: '',
+    dni: '',
+    nombres: '',
     telefono: '',
     correo: '',
-    direccion: ''
   });
 
   const fetchDuenos = async () => {
@@ -49,8 +47,10 @@ export default function DuenosList() {
       await api.post('/api/duenos', formData);
       setIsModalOpen(false);
       setFormData({
-        nombre: '', apellido: '', documento_identidad: '',
-        telefono: '', correo: '', direccion: ''
+        dni: '',
+        nombres: '',
+        telefono: '',
+        correo: ''
       });
       fetchDuenos();
       alert('Dueño registrado exitosamente');
@@ -83,9 +83,8 @@ export default function DuenosList() {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200">
-                  <th className="px-6 py-4 text-sm font-semibold text-gray-600">Nombre</th>
-                  <th className="px-6 py-4 text-sm font-semibold text-gray-600">Apellido</th>
-                  <th className="px-6 py-4 text-sm font-semibold text-gray-600">Documento</th>
+                  <th className="px-6 py-4 text-sm font-semibold text-gray-600">Nombres</th>
+                  <th className="px-6 py-4 text-sm font-semibold text-gray-600">DNI</th>
                   <th className="px-6 py-4 text-sm font-semibold text-gray-600">Teléfono</th>
                   <th className="px-6 py-4 text-sm font-semibold text-gray-600">Correo</th>
                 </tr>
@@ -94,9 +93,8 @@ export default function DuenosList() {
                 {duenos.length > 0 ? (
                   duenos.map((dueno, idx) => (
                     <tr key={dueno.id_dueno || idx} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4 text-sm font-medium text-gray-900">{dueno.nombre}</td>
-                      <td className="px-6 py-4 text-sm text-gray-600">{dueno.apellido}</td>
-                      <td className="px-6 py-4 text-sm text-gray-600">{dueno.documento_identidad || dueno.documento}</td>
+                      <td className="px-6 py-4 text-sm font-medium text-gray-900">{dueno.nombres}</td>
+                      <td className="px-6 py-4 text-sm text-gray-600">{dueno.dni}</td>
                       <td className="px-6 py-4 text-sm text-gray-600">{dueno.telefono}</td>
                       <td className="px-6 py-4 text-sm text-gray-600">{dueno.correo}</td>
                     </tr>
@@ -118,18 +116,14 @@ export default function DuenosList() {
         <form onSubmit={handleSubmit} className="space-y-4 mt-2">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Nombre *</label>
-              <input required type="text" name="nombre" value={formData.nombre} onChange={handleInputChange} className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary outline-none" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Apellido *</label>
-              <input required type="text" name="apellido" value={formData.apellido} onChange={handleInputChange} className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary outline-none" />
+              <label className="block text-sm font-medium text-gray-700 mb-1">Nombre y Apellidos*</label>
+              <input required type="text" name="nombres" value={formData.nombres} onChange={handleInputChange} className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary outline-none" />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Documento *</label>
-              <input required type="text" name="documento_identidad" value={formData.documento_identidad} onChange={handleInputChange} className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary outline-none" />
+              <label className="block text-sm font-medium text-gray-700 mb-1">DNI *</label>
+              <input required type="text" name="dni" maxLenth ={8} value={formData.dni} onChange={handleInputChange} className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary outline-none" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Teléfono *</label>
@@ -139,10 +133,6 @@ export default function DuenosList() {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Correo Electrónico</label>
             <input type="email" name="correo" value={formData.correo} onChange={handleInputChange} className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary outline-none" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Dirección</label>
-            <input type="text" name="direccion" value={formData.direccion} onChange={handleInputChange} className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary outline-none" />
           </div>
           <div className="mt-6 flex justify-end gap-3">
             <Button type="button" variant="secondary" onClick={() => setIsModalOpen(false)}>Cancelar</Button>

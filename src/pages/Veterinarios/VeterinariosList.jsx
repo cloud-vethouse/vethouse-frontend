@@ -12,28 +12,19 @@ export default function VeterinariosList() {
   const [error, setError] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [formData, setFormData] = useState({
-    nombre: '',
-    apellido: '',
-    numero_colegiatura: '',
+    dni: '',
+    nombres: '',
     especialidad: '',
+    colegiatura: '',
     telefono: '',
     correo: '',
-    horario_turno: '',
-    estado: 'Activo'
+    estado: 'ACTIVO'
   });
-
-  const MOCK_VETERINARIOS = [
-    { id_veterinario: 1, nombre: 'Ana', apellido: 'García', numero_colegiatura: 'VET-2024-001', especialidad: 'Cirugía', telefono: '555-0101', correo: 'ana.garcia@vetsystem.com', horario_turno: 'Mañana', estado: 'Activo' },
-    { id_veterinario: 2, nombre: 'Carlos', apellido: 'Martínez', numero_colegiatura: 'VET-2024-002', especialidad: 'Dermatología', telefono: '555-0102', correo: 'carlos.martinez@vetsystem.com', horario_turno: 'Tarde', estado: 'Activo' },
-    { id_veterinario: 3, nombre: 'Laura', apellido: 'Rodríguez', numero_colegiatura: 'VET-2024-003', especialidad: 'Medicina Interna', telefono: '555-0103', correo: 'laura.rodriguez@vetsystem.com', horario_turno: 'Mañana', estado: 'Activo' },
-    { id_veterinario: 4, nombre: 'Roberto', apellido: 'Fernández', numero_colegiatura: 'VET-2023-015', especialidad: 'Oftalmología', telefono: '555-0104', correo: 'roberto.fernandez@vetsystem.com', horario_turno: 'Noche', estado: 'Inactivo' },
-    { id_veterinario: 5, nombre: 'María', apellido: 'López', numero_colegiatura: 'VET-2024-005', especialidad: 'Cardiología', telefono: '555-0105', correo: 'maria.lopez@vetsystem.com', horario_turno: 'Tarde', estado: 'Activo' },
-  ];
 
   const fetchVeterinarios = async () => {
     try {
       setLoading(true);
-      const res = await api.get('/api/veterinarios').catch(() => ({ data: MOCK_VETERINARIOS }));
+      const res = await api.get('/api/veterinarios');
       setVeterinarios(Array.isArray(res.data) ? res.data : []);
       setError(null);
     } catch (err) {
@@ -59,9 +50,9 @@ export default function VeterinariosList() {
       await api.post('/api/veterinarios', formData);
       setIsModalOpen(false);
       setFormData({
-        nombre: '', apellido: '', numero_colegiatura: '',
-        especialidad: '', telefono: '', correo: '',
-        horario_turno: '', estado: 'Activo'
+        dni: '', nombres: '', especialidad: '',
+        colegiatura: '', telefono: '', correo: '',
+        estado: 'ACTIVO'
       });
       fetchVeterinarios();
       alert('Veterinario registrado exitosamente');
@@ -94,7 +85,8 @@ export default function VeterinariosList() {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200">
-                  <th className="px-6 py-4 text-sm font-semibold text-gray-600">Nombre</th>
+                  <th className="px-6 py-4 text-sm font-semibold text-gray-600">DNI</th>
+                  <th className="px-6 py-4 text-sm font-semibold text-gray-600">Nombres</th>
                   <th className="px-6 py-4 text-sm font-semibold text-gray-600">Especialidad</th>
                   <th className="px-6 py-4 text-sm font-semibold text-gray-600">Colegiatura</th>
                   <th className="px-6 py-4 text-sm font-semibold text-gray-600">Teléfono</th>
@@ -105,11 +97,10 @@ export default function VeterinariosList() {
                 {veterinarios.length > 0 ? (
                   veterinarios.map((vet, idx) => (
                     <tr key={vet.id_veterinario || idx} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                        {vet.nombre} {vet.apellido}
-                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-600">{vet.dni}</td>
+                      <td className="px-6 py-4 text-sm font-medium text-gray-900">{vet.nombres}</td>
                       <td className="px-6 py-4 text-sm text-gray-600">{vet.especialidad}</td>
-                      <td className="px-6 py-4 text-sm text-gray-600">{vet.numero_colegiatura}</td>
+                      <td className="px-6 py-4 text-sm text-gray-600">{vet.colegiatura}</td>
                       <td className="px-6 py-4 text-sm text-gray-600">{vet.telefono}</td>
                       <td className="px-6 py-4 text-sm text-gray-600">
                         <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
@@ -122,7 +113,7 @@ export default function VeterinariosList() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="5" className="px-6 py-8 text-center text-gray-500">
+                    <td colSpan="6" className="px-6 py-8 text-center text-gray-500">
                       No se encontraron veterinarios.
                     </td>
                   </tr>
@@ -137,18 +128,18 @@ export default function VeterinariosList() {
         <form onSubmit={handleSubmit} className="space-y-4 mt-2">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Nombre *</label>
-              <input required type="text" name="nombre" value={formData.nombre} onChange={handleInputChange} className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary outline-none" />
+              <label className="block text-sm font-medium text-gray-700 mb-1">DNI *</label>
+              <input required type="text" name="dni" value={formData.dni} onChange={handleInputChange} className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary outline-none" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Apellido *</label>
-              <input required type="text" name="apellido" value={formData.apellido} onChange={handleInputChange} className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary outline-none" />
+              <label className="block text-sm font-medium text-gray-700 mb-1">Nombres Completos *</label>
+              <input required type="text" name="nombres" value={formData.nombres} onChange={handleInputChange} className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary outline-none" />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">N° Colegiatura *</label>
-              <input required type="text" name="numero_colegiatura" value={formData.numero_colegiatura} onChange={handleInputChange} className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary outline-none" />
+              <label className="block text-sm font-medium text-gray-700 mb-1">N° Colegiatura (CMVP-XXXX) *</label>
+              <input required type="text" name="colegiatura" value={formData.colegiatura} onChange={handleInputChange} className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary outline-none" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Especialidad *</label>
@@ -165,21 +156,12 @@ export default function VeterinariosList() {
               <input type="email" name="correo" value={formData.correo} onChange={handleInputChange} className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary outline-none" />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Horario de Turno *</label>
-              <select required name="horario_turno" value={formData.horario_turno} onChange={handleInputChange} className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary outline-none">
-                <option value="">Seleccionar...</option>
-                <option value="Mañana">Mañana</option>
-                <option value="Tarde">Tarde</option>
-                <option value="Noche">Noche</option>
-              </select>
-            </div>
+          <div className="grid grid-cols-1 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Estado *</label>
               <select required name="estado" value={formData.estado} onChange={handleInputChange} className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary outline-none">
-                <option value="Activo">Activo</option>
-                <option value="Inactivo">Inactivo</option>
+                <option value="ACTIVO">Activo</option>
+                <option value="INACTIVO">Inactivo</option>
               </select>
             </div>
           </div>

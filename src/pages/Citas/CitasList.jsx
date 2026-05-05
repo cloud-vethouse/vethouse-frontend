@@ -17,44 +17,19 @@ export default function CitasList() {
   const [formData, setFormData] = useState({
     id_mascota: '',
     id_veterinario: '',
-    fecha_hora_inicio: '',
-    fecha_hora_fin: '',
+    fecha_hora: '',
     motivo_consulta: '',
     tipo_cita: '',
     notas_cliente: ''
   });
 
-  const MOCK_CITAS = [
-    { id_cita: 1, id_mascota: 1, nombre_mascota: 'Luna', id_veterinario: 1, nombre_veterinario: 'Ana García', fecha_hora_inicio: '2026-04-21T09:00', fecha_hora_fin: '2026-04-21T09:30', motivo_consulta: 'Vacunación anual', tipo_cita: 'Preventiva', estado: 'Confirmada' },
-    { id_cita: 2, id_mascota: 2, nombre_mascota: 'Max', id_veterinario: 2, nombre_veterinario: 'Carlos Martínez', fecha_hora_inicio: '2026-04-21T10:00', fecha_hora_fin: '2026-04-21T10:45', motivo_consulta: 'Dolor de oreja', tipo_cita: 'Urgencia', estado: 'En curso' },
-    { id_cita: 3, id_mascota: 3, nombre_mascota: 'Mimi', id_veterinario: 3, nombre_veterinario: 'Laura Rodríguez', fecha_hora_inicio: '2026-04-22T11:00', fecha_hora_fin: '2026-04-22T11:30', motivo_consulta: 'Control peso', tipo_cita: 'Seguimiento', estado: 'Pendiente' },
-    { id_cita: 4, id_mascota: 1, nombre_mascota: 'Luna', id_veterinario: 1, nombre_veterinario: 'Ana García', fecha_hora_inicio: '2026-04-20T14:00', fecha_hora_fin: '2026-04-20T14:30', motivo_consulta: 'Revisión post-cirugía', tipo_cita: 'Seguimiento', estado: 'Completada' },
-    { id_cita: 5, id_mascota: 4, nombre_mascota: 'Rocky', id_veterinario: 2, nombre_veterinario: 'Carlos Martínez', fecha_hora_inicio: '2026-04-22T16:00', fecha_hora_fin: '2026-04-22T16:45', motivo_consulta: 'Cojera persistente', tipo_cita: 'Consulta general', estado: 'Cancelada' },
-  ];
-
-  const MOCK_MASCOTAS = [
-    { id_mascota: 1, nombre: 'Luna', especie: 'Perro', raza: 'Golden Retriever' },
-    { id_mascota: 2, nombre: 'Max', especie: 'Perro', raza: 'Labrador' },
-    { id_mascota: 3, nombre: 'Mimi', especie: 'Gato', raza: 'Siamés' },
-    { id_mascota: 4, nombre: 'Rocky', especie: 'Perro', raza: 'Bulldog' },
-    { id_mascota: 5, nombre: 'Coco', especie: 'Ave', raza: 'Cacatúa' },
-  ];
-
-  const MOCK_VETERINARIOS = [
-    { id_veterinario: 1, nombre: 'Ana', apellido: 'García' },
-    { id_veterinario: 2, nombre: 'Carlos', apellido: 'Martínez' },
-    { id_veterinario: 3, nombre: 'Laura', apellido: 'Rodríguez' },
-    { id_veterinario: 4, nombre: 'Roberto', apellido: 'Fernández' },
-    { id_veterinario: 5, nombre: 'María', apellido: 'López' },
-  ];
-
   const fetchData = async () => {
     try {
       setLoading(true);
       const [citasRes, mascotasRes, vetsRes] = await Promise.all([
-        api.get('/api/citas').catch(() => ({ data: MOCK_CITAS })),
-        api.get('/api/mascotas').catch(() => ({ data: MOCK_MASCOTAS })),
-        api.get('/api/veterinarios').catch(() => ({ data: MOCK_VETERINARIOS }))
+        api.get('/api/citas'),
+        api.get('/api/mascotas'),
+        api.get('/api/veterinarios')
       ]);
       setCitas(Array.isArray(citasRes.data) ? citasRes.data : []);
       setMascotas(Array.isArray(mascotasRes.data) ? mascotasRes.data : []);
@@ -83,8 +58,8 @@ export default function CitasList() {
       await api.post('/api/citas', formData);
       setIsModalOpen(false);
       setFormData({
-        id_mascota: '', id_veterinario: '', fecha_hora_inicio: '',
-        fecha_hora_fin: '', motivo_consulta: '', tipo_cita: '', notas_cliente: ''
+        id_mascota: '', id_veterinario: '', fecha_hora: '',
+        motivo_consulta: '', tipo_cita: '', notas_cliente: ''
       });
       fetchData();
       alert('Cita registrada exitosamente');
@@ -165,7 +140,7 @@ export default function CitasList() {
                 {filteredCitas.length > 0 ? (
                   filteredCitas.map((cita, idx) => (
                     <tr key={cita.id_cita || idx} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4 text-sm text-gray-600">{formatFecha(cita.fecha_hora_inicio)}</td>
+                      <td className="px-6 py-4 text-sm text-gray-600">{formatFecha(cita.fecha_hora)}</td>
                       <td className="px-6 py-4 text-sm font-medium text-gray-900">{cita.nombre_mascota || cita.id_mascota}</td>
                       <td className="px-6 py-4 text-sm text-gray-600">{cita.nombre_veterinario || cita.id_veterinario}</td>
                       <td className="px-6 py-4 text-sm text-gray-600">{cita.motivo_consulta}</td>
@@ -210,20 +185,16 @@ export default function CitasList() {
                 <option value="">Seleccionar veterinario...</option>
                 {veterinarios.map(v => (
                   <option key={v.id_veterinario} value={v.id_veterinario}>
-                    {v.nombre} {v.apellido}
+                    {v.nombres}
                   </option>
                 ))}
               </select>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Inicio *</label>
-              <input required type="datetime-local" name="fecha_hora_inicio" value={formData.fecha_hora_inicio} onChange={handleInputChange} className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary outline-none" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Fin *</label>
-              <input required type="datetime-local" name="fecha_hora_fin" value={formData.fecha_hora_fin} onChange={handleInputChange} className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary outline-none" />
+              <label className="block text-sm font-medium text-gray-700 mb-1">Fecha y Hora *</label>
+              <input required type="datetime-local" name="fecha_hora" value={formData.fecha_hora} onChange={handleInputChange} className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary outline-none" />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">

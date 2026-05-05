@@ -21,28 +21,12 @@ export default function TratamientosList() {
     costo_referencial: ''
   });
 
-  const MOCK_TRATAMIENTOS = [
-    { id_tratamiento: 1, id_mascota: 1, nombre_mascota: 'Luna', tipo_procedimiento: 'Vacunación', fecha_procedimiento: '2026-04-15', descripcion: 'Vacuna triple felina + rabia', costo_referencial: 120.00, estado: 'Completado' },
-    { id_tratamiento: 2, id_mascota: 2, nombre_mascota: 'Max', tipo_procedimiento: 'Cirugía', fecha_procedimiento: '2026-04-10', descripcion: 'Esterilización laparoscópica', costo_referencial: 450.00, estado: 'Completado' },
-    { id_tratamiento: 3, id_mascota: 3, nombre_mascota: 'Mimi', tipo_procedimiento: 'Desparasitación', fecha_procedimiento: '2026-04-20', descripcion: 'Dosis interna + externa', costo_referencial: 85.00, estado: 'Pendiente' },
-    { id_tratamiento: 4, id_mascota: 1, nombre_mascota: 'Luna', tipo_procedimiento: 'Radiografía', fecha_procedimiento: '2026-04-22', descripcion: 'Estudio de cadera displasia', costo_referencial: 200.00, estado: 'Programado' },
-    { id_tratamiento: 5, id_mascota: 4, nombre_mascota: 'Rocky', tipo_procedimiento: 'Limpieza dental', fecha_procedimiento: '2026-04-18', descripcion: 'Profilaxis con ultrasonido', costo_referencial: 150.00, estado: 'Completado' },
-  ];
-
-  const MOCK_MASCOTAS = [
-    { id_mascota: 1, nombre: 'Luna', especie: 'Perro', raza: 'Golden Retriever' },
-    { id_mascota: 2, nombre: 'Max', especie: 'Perro', raza: 'Labrador' },
-    { id_mascota: 3, nombre: 'Mimi', especie: 'Gato', raza: 'Siamés' },
-    { id_mascota: 4, nombre: 'Rocky', especie: 'Perro', raza: 'Bulldog' },
-    { id_mascota: 5, nombre: 'Coco', especie: 'Ave', raza: 'Cacatúa' },
-  ];
-
   const fetchData = async () => {
     try {
       setLoading(true);
       const [tratRes, mascotasRes] = await Promise.all([
-        api.get('/api/tratamientos').catch(() => ({ data: MOCK_TRATAMIENTOS })),
-        api.get('/api/mascotas').catch(() => ({ data: MOCK_MASCOTAS }))
+        api.get('/api/tratamientos'),
+        api.get('/api/mascotas')
       ]);
       setTratamientos(Array.isArray(tratRes.data) ? tratRes.data : []);
       setMascotas(Array.isArray(mascotasRes.data) ? mascotasRes.data : []);
