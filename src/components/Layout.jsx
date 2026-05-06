@@ -11,14 +11,13 @@ export default function Layout({ children }) {
     { name: 'Mascotas', path: '/mascotas', icon: Dog },
     { name: 'Dueños', path: '/duenos', icon: Users },
     { name: 'Citas', path: '/citas', icon: Calendar },
-    { name: 'Tratamientos', path: '/tratamientos', icon: FileText },
+    { name: 'Consultas y Tratamientos', path: '/consultas', icon: FileText },
     { name: 'Veterinarios', path: '/veterinarios', icon: Users },
     { name: 'Historial Clínico', path: '/historial', icon: FileText },
   ];
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      {/* Sidebar */}
       <aside className={`${isSidebarOpen ? 'w-64' : 'w-20'} transition-all duration-300 ease-in-out bg-white border-r border-gray-200 flex flex-col`}>
         <div className="h-16 flex items-center justify-center border-b border-gray-200">
           <PawPrint className="w-8 h-8 text-primary" />
