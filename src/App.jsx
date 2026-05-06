@@ -5,7 +5,7 @@ import DuenosList from './pages/Duenos/DuenosList';
 import AnalyticsDashboard from './pages/Analytics/AnalyticsDashboard';
 import VeterinariosList from './pages/Veterinarios/VeterinariosList';
 import CitasList from './pages/Citas/CitasList';
-import TratamientosList from './pages/Tratamientos/TratamientosList';
+import ConsultasList from './pages/Consultas/ConsultasList';
 import HistorialView from './pages/Historial/HistorialView';
 import Layout from './components/Layout';
 
@@ -35,9 +35,9 @@ function App() {
         <Route path="/analytics" element={<AnalyticsDashboard />} />
         
         {/* Rutas Placeholder (Requeridas por el Layout) */}
-        <Route path="/citas" element={<CitasList />} />
-        <Route path="/tratamientos" element={<TratamientosList />} />
         <Route path="/veterinarios" element={<VeterinariosList />} />
+        <Route path="/citas" element={<CitasList />} />
+        <Route path="/consultas" element={<ConsultasList/>} />
         <Route path="/historial" element={<HistorialView />} />
         
         {/* Fallback */}
