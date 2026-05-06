@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search } from 'lucide-react';
+import { Plus, Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import api from '../../services/api';
 import Layout from '../../components/Layout';
 import Button from '../../components/Button';
@@ -13,39 +13,48 @@ export default function CitasList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [searchInput, setSearchInput] = useState('');
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const limit = 10;
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [formData, setFormData] = useState({
-    id_mascota: '',
-    id_veterinario: '',
-    fecha_hora: '',
-    motivo_consulta: '',
-    tipo_cita: '',
-    notas_cliente: ''
+    id_mascota: '', id_veterinario: '', fecha_hora: '',
+    motivo_consulta: '', tipo_cita: '', notas_cliente: ''
   });
 
   const fetchData = async () => {
     try {
       setLoading(true);
       const [citasRes, mascotasRes, vetsRes] = await Promise.all([
-        api.get('/api/citas'),
+        api.get(`/api/citas?page=${page}&limit=${limit}&search=${searchTerm}`),
         api.get('/api/mascotas'),
         api.get('/api/veterinarios')
       ]);
-      setCitas(Array.isArray(citasRes.data) ? citasRes.data : []);
+
+      const citasData = citasRes.data?.data || citasRes.data;
+      setCitas(Array.isArray(citasData) ? citasData : []);
+      if (citasRes.data?.pagination) setTotalPages(citasRes.data.pagination.totalPages || 1);
+
       setMascotas(Array.isArray(mascotasRes.data) ? mascotasRes.data : []);
       setVeterinarios(Array.isArray(vetsRes.data) ? vetsRes.data : []);
       setError(null);
     } catch (err) {
       setError('Error al cargar los datos. Por favor, intente nuevamente.');
-      console.error(err);
     } finally {
       setLoading(false);
     }
   };
 
+  useEffect(() => { fetchData(); }, [page, searchTerm]);
+
   useEffect(() => {
-    fetchData();
-  }, []);
+    const timer = setTimeout(() => {
+      setPage(1);
+      setSearchTerm(searchInput);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -62,17 +71,18 @@ export default function CitasList() {
         motivo_consulta: '', tipo_cita: '', notas_cliente: ''
       });
       fetchData();
-      alert('Cita registrada exitosamente');
     } catch (err) {
       alert('Error al registrar la cita');
-      console.error(err);
     }
   };
 
   const formatFecha = (fechaStr) => {
     if (!fechaStr) return '-';
     const date = new Date(fechaStr);
-    return date.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    return date.toLocaleDateString('es-ES', {
+      day: '2-digit', month: 'short', year: 'numeric',
+      hour: '2-digit', minute: '2-digit'
+    });
   };
 
   const getEstadoBadgeClass = (estado) => {
@@ -86,12 +96,6 @@ export default function CitasList() {
     }
   };
 
-  const filteredCitas = citas.filter(c => 
-    c.motivo_consulta?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    c.nombre_mascota?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    c.nombre_veterinario?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
   return (
     <Layout>
       <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -100,8 +104,7 @@ export default function CitasList() {
           <p className="text-gray-500 text-sm mt-1">Gestión de citas y consultas</p>
         </div>
         <Button onClick={() => setIsModalOpen(true)} className="flex items-center gap-2">
-          <Plus className="w-4 h-4" />
-          Nueva Cita
+          <Plus className="w-4 h-4" /> Nueva Cita
         </Button>
       </div>
 
@@ -111,10 +114,10 @@ export default function CitasList() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
               type="text"
-              placeholder="Buscar por mascota, veterinario o motivo..."
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Buscar por mascota, veterinario o ID..."
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary outline-none"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
             />
           </div>
         </div>
@@ -124,43 +127,68 @@ export default function CitasList() {
         ) : error ? (
           <div className="p-8 text-center text-red-600 bg-red-50">{error}</div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-gray-50 border-b border-gray-200">
-                  <th className="px-6 py-4 text-sm font-semibold text-gray-600">Fecha</th>
-                  <th className="px-6 py-4 text-sm font-semibold text-gray-600">Mascota</th>
-                  <th className="px-6 py-4 text-sm font-semibold text-gray-600">Veterinario</th>
-                  <th className="px-6 py-4 text-sm font-semibold text-gray-600">Motivo</th>
-                  <th className="px-6 py-4 text-sm font-semibold text-gray-600">Tipo</th>
-                  <th className="px-6 py-4 text-sm font-semibold text-gray-600">Estado</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {filteredCitas.length > 0 ? (
-                  filteredCitas.map((cita, idx) => (
+          <div className="flex flex-col">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-gray-50 border-b border-gray-200">
+                    <th className="px-6 py-4 text-sm font-semibold text-gray-600">Fecha</th>
+                    <th className="px-6 py-4 text-sm font-semibold text-gray-600">Mascota</th>
+                    <th className="px-6 py-4 text-sm font-semibold text-gray-600">Veterinario</th>
+                    <th className="px-6 py-4 text-sm font-semibold text-gray-600">Motivo</th>
+                    <th className="px-6 py-4 text-sm font-semibold text-gray-600">Tipo</th>
+                    <th className="px-6 py-4 text-sm font-semibold text-gray-600">Estado</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {citas.length > 0 ? citas.map((cita, idx) => (
                     <tr key={cita.id_cita || idx} className="hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4 text-sm text-gray-600">{formatFecha(cita.fecha_hora)}</td>
-                      <td className="px-6 py-4 text-sm font-medium text-gray-900">{cita.nombre_mascota || cita.id_mascota}</td>
-                      <td className="px-6 py-4 text-sm text-gray-600">{cita.nombre_veterinario || cita.id_veterinario}</td>
+                      <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                        <span>{cita.nombre_mascota || '-'}</span>
+                        <span className="ml-1 text-xs text-gray-400">#{cita.id_mascota}</span>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-600">{cita.nombre_veterinario || '-'}</td>
                       <td className="px-6 py-4 text-sm text-gray-600">{cita.motivo_consulta}</td>
                       <td className="px-6 py-4 text-sm text-gray-600">{cita.tipo_cita}</td>
-                      <td className="px-6 py-4 text-sm text-gray-600">
+                      <td className="px-6 py-4">
                         <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${getEstadoBadgeClass(cita.estado)}`}>
                           {cita.estado}
                         </span>
                       </td>
                     </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan="6" className="px-6 py-8 text-center text-gray-500">
-                      No se encontraron citas.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+                  )) : (
+                    <tr>
+                      <td colSpan="6" className="px-6 py-8 text-center text-gray-500">
+                        No se encontraron citas.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {totalPages > 1 && (
+              <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
+                <p className="text-sm text-gray-500">Página {page} de {totalPages}</p>
+                <nav className="flex gap-1">
+                  <button
+                    onClick={() => setPage(p => Math.max(1, p - 1))}
+                    disabled={page === 1}
+                    className="relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 disabled:opacity-50"
+                  >
+                    <ChevronLeft className="h-5 w-5" />
+                  </button>
+                  <button
+                    onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                    disabled={page === totalPages}
+                    className="relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 disabled:opacity-50"
+                  >
+                    <ChevronRight className="h-5 w-5" />
+                  </button>
+                </nav>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -191,11 +219,9 @@ export default function CitasList() {
               </select>
             </div>
           </div>
-          <div className="grid grid-cols-1 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Fecha y Hora *</label>
-              <input required type="datetime-local" name="fecha_hora" value={formData.fecha_hora} onChange={handleInputChange} className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary outline-none" />
-            </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Fecha y Hora *</label>
+            <input required type="datetime-local" name="fecha_hora" value={formData.fecha_hora} onChange={handleInputChange} className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary outline-none" />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
