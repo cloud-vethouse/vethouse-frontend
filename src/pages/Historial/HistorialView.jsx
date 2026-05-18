@@ -1,205 +1,257 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Search, Dog, Calendar, FileText, Stethoscope, 
-  ChevronLeft, ChevronRight, Hash, AlertCircle, Phone, Mail 
-} from 'lucide-react';
+import { Search, ChevronLeft, ChevronRight, FileText, Eye } from 'lucide-react';
 import api from '../../services/api';
 import Layout from '../../components/Layout';
+import Button from '../../components/Button';
+import Modal from '../../components/Modal';
 import Spinner from '../../components/Spinner';
 
 export default function HistorialView() {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [historiales, setHistoriales] = useState([]);
+  const [historial, setHistorial] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [selectedHistoryId, setSelectedHistoryId] = useState(null);
+  
+  // --- Estados de Búsqueda y Paginación Frontend ---
+  const [searchTerm, setSearchTerm] = useState('');
+  const [searchInput, setSearchInput] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
+  // --- Estados del Modal de Detalles ---
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [selectedRecord, setSelectedRecord] = useState(null);
 
-  const fetchHistoriales = async () => {
+  const fetchData = async () => {
     try {
       setLoading(true);
+      // Pedimos todos los registros de golpe para poder buscar en memoria
+      // (Nota: Si tu backend usa /api/consultas para el historial, déjalo así. 
+      // Si creaste un endpoint específico, cámbialo a /api/historial?limit=1000)
+      const res = await api.get('/api/consultas?limit=1000');
+      
+      const historialData = res.data?.data || res.data;
+      setHistorial(Array.isArray(historialData) ? historialData : []);
       setError(null);
-      const res = await api.get(`/api/historial?page=${page}&limit=10`);
-      
-      const dataArray = res.data?.data || [];
-      setHistoriales(Array.isArray(dataArray) ? dataArray : []);
-      
-      if (res.data?.pagination) {
-        setTotalPages(res.data.pagination.totalPages || 1);
-      }
-
-      if (dataArray.length > 0 && !selectedHistoryId) {
-        setSelectedHistoryId(dataArray[0].mascota?.id_mascota);
-      }
     } catch (err) {
-      console.error("Error en el fetch del historial:", err);
-      setError('No se pudo conectar con el servicio de historiales.');
+      setError('Error al cargar el historial clínico. Por favor, intente nuevamente.');
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchHistoriales();
-  }, [page]);
+    fetchData();
+  }, []);
 
-  const filteredHistoriales = historiales.filter((h) => {
-    const term = searchTerm.toLowerCase();
-    const petId = String(h.mascota?.id_mascota || '');
-    const petName = (h.mascota?.nombre || '').toLowerCase();
-    const ownerName = (h.mascota?.dueno?.nombre || '').toLowerCase();
-    return petId.includes(term) || petName.includes(term) || ownerName.includes(term);
+  // Efecto de "Debounce" para no buscar con cada letra que se escribe, sino al pausar
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setCurrentPage(1); // Regresamos a la pag 1 al buscar
+      setSearchTerm(searchInput);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+
+  const formatFecha = (fechaStr) => {
+    if (!fechaStr) return '-';
+    const date = new Date(fechaStr);
+    return Number.isNaN(date.getTime()) ? '-' : date.toLocaleDateString('es-ES', { 
+      day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+    });
+  };
+
+  // --- LÓGICA DE FILTRADO FRONTEND ---
+  const filteredHistorial = historial.filter(record => {
+    if (!searchTerm) return true;
+    const searchLower = searchTerm.toLowerCase();
+    
+    // Buscamos coincidencias en los campos más importantes
+    const mascota = (record.nombre_mascota || '').toLowerCase();
+    const vet = (record.nombre_veterinario || '').toLowerCase();
+    const diagnostico = (record.diagnostico || '').toLowerCase();
+    const sintomas = (record.sintomas || '').toLowerCase();
+    
+    return mascota.includes(searchLower) || 
+           vet.includes(searchLower) || 
+           diagnostico.includes(searchLower) || 
+           sintomas.includes(searchLower);
   });
 
-  const historialSeleccionado = historiales.find(
-    (h) => h.mascota?.id_mascota === selectedHistoryId
-  ) || null;
-
-
-  if (loading) return <Layout><div className="flex justify-center p-20"><Spinner /></div></Layout>;
+  // --- LÓGICA DE PAGINACIÓN FRONTEND ---
+  const totalPages = Math.max(1, Math.ceil(filteredHistorial.length / itemsPerPage));
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentHistorial = filteredHistorial.slice(indexOfFirstItem, indexOfLastItem);
 
   return (
     <Layout>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-          <FileText className="w-6 h-6 text-primary" /> Historial Clínico
-        </h1>
-      </div>
-
-      <div className="bg-white rounded-xl shadow-sm border p-6 mb-6">
-        <div className="relative max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
-          <input
-            type="text"
-            placeholder="Buscar por ID (ej: 21), Mascota o Dueño..."
-            className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary outline-none"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+      <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Historial Clínico</h1>
+          <p className="text-gray-500 text-sm mt-1">Registro médico histórico de los pacientes</p>
         </div>
+        <Button onClick={() => window.print()} className="flex items-center gap-2" variant="secondary">
+          <FileText className="w-4 h-4" /> Exportar / Imprimir
+        </Button>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        <div className="xl:col-span-1 space-y-4">
-          <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
-            <div className="px-4 py-3 bg-gray-50 border-b font-semibold text-gray-700 text-sm">
-              Pacientes (Página {page})
-            </div>
-            <div className="divide-y max-h-[600px] overflow-y-auto">
-              {filteredHistoriales.length > 0 ? filteredHistoriales.map((h) => (
-                <button
-                  key={h.mascota?.id_mascota}
-                  onClick={() => setSelectedHistoryId(h.mascota?.id_mascota)}
-                  className={`w-full px-4 py-3 text-left transition-colors ${h.mascota?.id_mascota === selectedHistoryId ? 'bg-primary/10 border-l-4 border-primary' : 'hover:bg-gray-50'}`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="bg-gray-100 p-2 rounded text-xs font-bold text-gray-500">
-                      #{h.mascota?.id_mascota}
-                    </div>
-                    <div>
-                      <p className="font-bold text-gray-900">{h.mascota?.nombre}</p>
-                      <p className="text-[11px] text-gray-500 truncate">Dueño: {h.mascota?.dueno?.nombre || 'Sin datos'}</p>
-                    </div>
-                  </div>
-                </button>
-              )) : <div className="p-8 text-center text-gray-400 text-sm">No se encontraron resultados</div>}
-            </div>
-            
-            <div className="p-3 bg-gray-50 border-t flex justify-between items-center">
-              <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="p-1 border rounded bg-white disabled:opacity-30"><ChevronLeft className="w-4 h-4"/></button>
-              <span className="text-[10px] font-bold text-gray-500 uppercase">Pág {page} / {totalPages}</span>
-              <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="p-1 border rounded bg-white disabled:opacity-30"><ChevronRight className="w-4 h-4"/></button>
-            </div>
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <div className="p-4 border-b border-gray-200 bg-gray-50/50">
+          <div className="relative max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <input
+              type="text"
+              placeholder="Buscar por mascota, diagnóstico o síntoma..."
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary outline-none transition-all bg-white"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+            />
           </div>
         </div>
 
-        <div className="xl:col-span-2 space-y-6">
-          {historialSeleccionado ? (
-            <>
-              <div className="bg-white rounded-xl shadow-sm border p-6">
-                <div className="flex items-center gap-3 mb-6 border-b pb-4">
-                  <Dog className="w-8 h-8 text-primary" />
-                  <div>
-                    <h2 className="text-xl font-bold text-gray-900">Expediente Clínico: {historialSeleccionado.mascota?.nombre}</h2>
-                    <p className="text-sm text-gray-500">ID de Registro: {historialSeleccionado.mascota?.id_mascota}</p>
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2 text-sm">
-                      <Hash className="w-4 h-4 text-gray-400" />
-                      <span className="text-gray-500">Dueño:</span>
-                      <span className="font-semibold">{historialSeleccionado.mascota?.dueno?.nombre || 'N/A'}</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm">
-                      <Phone className="w-4 h-4 text-gray-400" />
-                      <span className="text-gray-500">Teléfono:</span>
-                      <span className="font-semibold">{historialSeleccionado.mascota?.dueno?.telefono || 'N/A'}</span>
-                    </div>
-                  </div>
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2 text-sm">
-                      <Dog className="w-4 h-4 text-gray-400" />
-                      <span className="text-gray-500">Especie/Raza:</span>
-                      <span className="font-semibold">{historialSeleccionado.mascota?.especie} - {historialSeleccionado.mascota?.raza || 'Mestizo'}</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm">
-                      <FileText className="w-4 h-4 text-gray-400" />
-                      <span className="text-gray-500">Peso:</span>
-                      <span className="font-semibold">{historialSeleccionado.mascota?.peso} kg</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Tablas de Detalles (MS2 y MS3)[cite: 1, 2] */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Citas (MS2 - Java)[cite: 1] */}
-                <div className="bg-white rounded-xl shadow-sm border p-4">
-                  <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-primary" /> Agenda de Citas
-                  </h3>
-                  <div className="space-y-3">
-                    {historialSeleccionado.citas?.length > 0 ? historialSeleccionado.citas.map((cita, i) => (
-                      <div key={i} className="p-3 bg-gray-50 rounded-lg border border-gray-100">
-                        <p className="text-xs font-bold text-primary">{new Date(cita.fecha_hora).toLocaleDateString()}</p>
-                        <p className="text-sm font-medium text-gray-800">{cita.motivo_consulta}</p>
-                        <p className="text-[10px] text-gray-500">Vet: {cita.nombre_veterinario || 'Asignado'}</p>
-                      </div>
-                    )) : <p className="text-xs text-gray-400 italic">No hay citas registradas</p>}
-                  </div>
-                </div>
-
-                {/* Consultas y Tratamientos (MS3 - Node/Mongo)[cite: 1, 4] */}
-                <div className="bg-white rounded-xl shadow-sm border p-4">
-                  <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
-                    <Stethoscope className="w-4 h-4 text-primary" /> Registro Clínico
-                  </h3>
-                  <div className="space-y-3">
-                    {historialSeleccionado.tratamientos?.length > 0 ? historialSeleccionado.tratamientos.map((t, i) => (
-                      <div key={i} className="p-3 bg-blue-50/50 rounded-lg border border-blue-100">
-                        <div className="flex justify-between items-start mb-1">
-                          <p className="text-[10px] font-bold text-blue-600 uppercase">{t.tipo_procedimiento}</p>
-                          <p className="text-[9px] text-gray-400">{t.fecha_procedimiento}</p>
-                        </div>
-                        <p className="text-sm text-gray-700 leading-tight">{t.descripcion}</p>
-                      </div>
-                    )) : <p className="text-xs text-gray-400 italic">Sin antecedentes clínicos</p>}
-                  </div>
-                </div>
-              </div>
-            </>
-          ) : (
-            <div className="h-full flex flex-col items-center justify-center bg-gray-50 rounded-xl border-2 border-dashed border-gray-200 p-12 text-center">
-              <Dog className="w-16 h-16 text-gray-200 mb-4" />
-              <p className="text-gray-500">Selecciona una mascota de la lista para ver su historial clínico completo.</p>
+        {loading ? (
+          <div className="p-12"><Spinner /></div>
+        ) : error ? (
+          <div className="p-8 text-center text-red-600 bg-red-50">{error}</div>
+        ) : (
+          <div className="flex flex-col">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-gray-50 border-b border-gray-200">
+                    <th className="px-6 py-4 text-sm font-semibold text-gray-600">Fecha</th>
+                    <th className="px-6 py-4 text-sm font-semibold text-gray-600">Paciente</th>
+                    <th className="px-6 py-4 text-sm font-semibold text-gray-600">Atendido por</th>
+                    <th className="px-6 py-4 text-sm font-semibold text-gray-600">Motivo / Síntomas</th>
+                    <th className="px-6 py-4 text-sm font-semibold text-gray-600">Diagnóstico</th>
+                    <th className="px-6 py-4 text-sm font-semibold text-gray-600 text-center">Detalle</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {currentHistorial.length > 0 ? currentHistorial.map((record, idx) => (
+                    <tr key={record._id || record.id || idx} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-6 py-4 text-sm text-gray-600">{formatFecha(record.fecha_atencion)}</td>
+                      <td className="px-6 py-4 text-sm font-bold text-gray-900">{record.nombre_mascota}</td>
+                      <td className="px-6 py-4 text-sm text-gray-600">{record.nombre_veterinario}</td>
+                      <td className="px-6 py-4 text-sm text-gray-600 truncate max-w-[200px]" title={record.sintomas}>{record.sintomas}</td>
+                      <td className="px-6 py-4 text-sm text-gray-900 font-medium truncate max-w-[150px]" title={record.diagnostico}>{record.diagnostico}</td>
+                      <td className="px-6 py-4 text-center">
+                        <button 
+                          onClick={() => { setSelectedRecord(record); setIsViewModalOpen(true); }} 
+                          className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-colors" 
+                          title="Ver Ficha Completa"
+                        >
+                          <Eye className="w-5 h-5 mx-auto" />
+                        </button>
+                      </td>
+                    </tr>
+                  )) : (
+                    <tr>
+                      <td colSpan="6" className="px-6 py-8 text-center text-gray-500">
+                        No se encontraron registros en el historial.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
-          )}
-        </div>
+
+            {/* --- CONTROLES DE PAGINACIÓN FRONTEND --- */}
+            {totalPages > 1 && (
+              <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
+                <span className="text-sm text-gray-500">
+                  Mostrando {indexOfFirstItem + 1} a {Math.min(indexOfLastItem, filteredHistorial.length)} de {filteredHistorial.length} registros
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                    disabled={currentPage === 1}
+                    className="p-1 rounded-md border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                  >
+                    <ChevronLeft className="w-5 h-5 text-gray-600" />
+                  </button>
+                  <span className="text-sm text-gray-700 font-medium px-2">
+                    Página {currentPage} de {totalPages}
+                  </span>
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                    disabled={currentPage === totalPages}
+                    className="p-1 rounded-md border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                  >
+                    <ChevronRight className="w-5 h-5 text-gray-600" />
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
+
+      {/* MODAL: VER FICHA CLÍNICA COMPLETA */}
+      <Modal isOpen={isViewModalOpen} onClose={() => setIsViewModalOpen(false)} title="Ficha Clínica del Paciente">
+        {selectedRecord && (
+          <div className="space-y-4 mt-2 overflow-y-auto max-h-[70vh] pr-2">
+            <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+              <div className="bg-primary/5 px-4 py-3 border-b border-gray-200 flex justify-between items-center">
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900">{selectedRecord.nombre_mascota}</h3>
+                  <p className="text-xs text-gray-500">Atendido el: {formatFecha(selectedRecord.fecha_atencion)}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs text-gray-500 uppercase">Veterinario Tratante</p>
+                  <p className="text-sm font-semibold text-gray-900">{selectedRecord.nombre_veterinario}</p>
+                </div>
+              </div>
+              
+              <div className="p-4 space-y-4">
+                <div>
+                  <p className="text-xs text-gray-500 font-medium uppercase tracking-wider mb-1">Motivo de la visita / Síntomas</p>
+                  <p className="text-sm text-gray-800 bg-gray-50 p-3 rounded border border-gray-100">{selectedRecord.sintomas}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 font-medium uppercase tracking-wider mb-1">Diagnóstico Médico</p>
+                  <p className="text-sm text-gray-900 font-medium bg-blue-50/50 p-3 rounded border border-blue-100">{selectedRecord.diagnostico}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6">
+              <h4 className="text-sm font-bold text-gray-800 mb-3 flex items-center gap-2">
+                <Activity className="w-4 h-4 text-primary" /> Tratamientos Aplicados
+              </h4>
+              {selectedRecord.tratamientos && selectedRecord.tratamientos.length > 0 ? (
+                <div className="space-y-3">
+                  {selectedRecord.tratamientos.map((t, i) => (
+                    <div key={i} className="p-3 border border-gray-200 rounded-lg bg-white shadow-sm flex justify-between items-start">
+                      <div>
+                        <p className="font-semibold text-sm text-gray-900">{t.tipo}</p>
+                        <p className="text-xs text-gray-600 mt-1">{t.descripcion}</p>
+                      </div>
+                      <div className="text-right ml-4">
+                        <span className={`inline-block px-2 py-1 text-[10px] font-bold rounded-full border ${
+                          t.estado === 'Completado' ? 'bg-green-50 text-green-700 border-green-200' :
+                          t.estado === 'Pendiente' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
+                          'bg-blue-50 text-blue-700 border-blue-200'
+                        }`}>
+                          {t.estado || 'Completado'}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-sm text-gray-500 italic p-4 bg-gray-50 rounded-lg border border-gray-200 border-dashed text-center">
+                  El paciente no recibió tratamientos adicionales registrados en esta visita.
+                </div>
+              )}
+            </div>
+
+            <div className="mt-6 flex justify-end sticky bottom-0 bg-white pt-2 border-t border-gray-100">
+              <Button type="button" onClick={() => setIsViewModalOpen(false)}>Cerrar Historial</Button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </Layout>
   );
-} 
+}

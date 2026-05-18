@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search } from 'lucide-react';
+import { Plus, Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import api from '../../services/api';
 import Layout from '../../components/Layout';
 import Button from '../../components/Button';
@@ -13,6 +13,11 @@ export default function MascotasList() {
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  
+  // --- ESTADOS DE PAGINACIÓN ---
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10; // Puedes cambiar cuántas mascotas ver por página
+
   const [formData, setFormData] = useState({
     nombre: '',
     especie: '',
@@ -45,6 +50,11 @@ export default function MascotasList() {
     fetchData();
   }, []);
 
+  // Reiniciar a la página 1 cuando se busca algo
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -67,9 +77,15 @@ export default function MascotasList() {
     }
   };
 
+  // --- LÓGICA DE FILTRADO Y PAGINACIÓN ---
   const filteredMascotas = mascotas.filter(m => 
     m.nombre?.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const totalPages = Math.ceil(filteredMascotas.length / itemsPerPage);
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentMascotas = filteredMascotas.slice(indexOfFirstItem, indexOfLastItem);
 
   return (
     <Layout>
@@ -103,45 +119,75 @@ export default function MascotasList() {
         ) : error ? (
           <div className="p-8 text-center text-red-600 bg-red-50">{error}</div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-gray-50 border-b border-gray-200">
-                  <th className="px-6 py-4 text-sm font-semibold text-gray-600">Nombre</th>
-                  <th className="px-6 py-4 text-sm font-semibold text-gray-600">Especie</th>
-                  <th className="px-6 py-4 text-sm font-semibold text-gray-600">Raza</th>
-                  <th className="px-6 py-4 text-sm font-semibold text-gray-600">Sexo</th>
-                  <th className="px-6 py-4 text-sm font-semibold text-gray-600">Dueño</th>
-                  <th className="px-6 py-4 text-sm font-semibold text-gray-600">Est. Reproductivo</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {filteredMascotas.length > 0 ? (
-                  filteredMascotas.map((mascota, idx) => (
-                    <tr key={mascota.id_mascota || idx} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4 text-sm font-medium text-gray-900">{mascota.nombre}</td>
-                      <td className="px-6 py-4 text-sm text-gray-600">{mascota.especie}</td>
-                      <td className="px-6 py-4 text-sm text-gray-600">{mascota.raza}</td>
-                      <td className="px-6 py-4 text-sm text-gray-600">{mascota.sexo}</td>
-                      <td className="px-6 py-4 text-sm text-gray-600">{mascota.dueno_nombre || mascota.id_dueno}</td>
-                      <td className="px-6 py-4 text-sm text-gray-600">
-                        <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
-                          mascota.estado_reproductivo === 'Castrado' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'
-                        }`}>
-                          {mascota.estado_reproductivo}
-                        </span>
+          <div className="flex flex-col">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-gray-50 border-b border-gray-200">
+                    <th className="px-6 py-4 text-sm font-semibold text-gray-600">Nombre</th>
+                    <th className="px-6 py-4 text-sm font-semibold text-gray-600">Especie</th>
+                    <th className="px-6 py-4 text-sm font-semibold text-gray-600">Raza</th>
+                    <th className="px-6 py-4 text-sm font-semibold text-gray-600">Sexo</th>
+                    <th className="px-6 py-4 text-sm font-semibold text-gray-600">Dueño</th>
+                    <th className="px-6 py-4 text-sm font-semibold text-gray-600">Est. Reproductivo</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {currentMascotas.length > 0 ? (
+                    currentMascotas.map((mascota, idx) => (
+                      <tr key={mascota.id_mascota || mascota.id || idx} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-6 py-4 text-sm font-medium text-gray-900">{mascota.nombre}</td>
+                        <td className="px-6 py-4 text-sm text-gray-600">{mascota.especie}</td>
+                        <td className="px-6 py-4 text-sm text-gray-600">{mascota.raza || '-'}</td>
+                        <td className="px-6 py-4 text-sm text-gray-600">{mascota.sexo}</td>
+                        <td className="px-6 py-4 text-sm text-gray-600">{mascota.dueno_nombre || mascota.id_dueno || '-'}</td>
+                        <td className="px-6 py-4 text-sm text-gray-600">
+                          <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
+                            mascota.estado_reproductivo === 'Castrado' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'
+                          }`}>
+                            {mascota.estado_reproductivo}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="6" className="px-6 py-8 text-center text-gray-500">
+                        No se encontraron mascotas.
                       </td>
                     </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan="6" className="px-6 py-8 text-center text-gray-500">
-                      No se encontraron mascotas.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+                  )}
+                </tbody>
+              </table>
+            </div>
+            
+            {/* --- CONTROLES DE PAGINACIÓN --- */}
+            {totalPages > 1 && (
+              <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
+                <span className="text-sm text-gray-500">
+                  Mostrando {indexOfFirstItem + 1} a {Math.min(indexOfLastItem, filteredMascotas.length)} de {filteredMascotas.length} mascotas
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                    disabled={currentPage === 1}
+                    className="p-1 rounded-md border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                  >
+                    <ChevronLeft className="w-5 h-5 text-gray-600" />
+                  </button>
+                  <span className="text-sm text-gray-700 font-medium px-2">
+                    Página {currentPage} de {totalPages}
+                  </span>
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                    disabled={currentPage === totalPages}
+                    className="p-1 rounded-md border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                  >
+                    <ChevronRight className="w-5 h-5 text-gray-600" />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -197,8 +243,10 @@ export default function MascotasList() {
               <select required name="id_dueno" value={formData.id_dueno} onChange={handleInputChange} className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary outline-none">
                 <option value="">Seleccionar dueño...</option>
                 {duenos.map(d => (
-                  <option key={d.id_dueno} value={d.id_dueno}>
-                    {d.nombre} {d.apellido}
+                  /* Usamos d.id || d.id_dueno por si el backend usa "id" en lugar de "id_dueno".
+                     Lo mismo para "nombre" vs "nombres" */
+                  <option key={d.id_dueno || d.id} value={d.id_dueno || d.id}>
+                    {d.nombre || d.nombres || ''} {d.apellido || d.apellidos || ''}
                   </option>
                 ))}
               </select>
