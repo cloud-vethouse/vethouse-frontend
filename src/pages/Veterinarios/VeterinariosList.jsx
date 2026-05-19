@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus } from 'lucide-react';
+import { Plus, Edit2, Trash2 } from 'lucide-react';
 import api from '../../services/api';
 import Layout from '../../components/Layout';
 import Button from '../../components/Button';
@@ -11,6 +11,10 @@ export default function VeterinariosList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  
+  // Estado para saber si creamos o editamos
+  const [editingId, setEditingId] = useState(null);
+  
   const [formData, setFormData] = useState({
     dni: '',
     nombres: '',
@@ -44,20 +48,59 @@ export default function VeterinariosList() {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+  const handleOpenNew = () => {
+    setEditingId(null);
+    setFormData({
+      dni: '', nombres: '', especialidad: '',
+      colegiatura: '', telefono: '', correo: '',
+      estado: 'ACTIVO'
+    });
+    setIsModalOpen(true);
+  };
+
+  const handleEdit = (vet) => {
+    setEditingId(vet.id_veterinario || vet.id);
+    setFormData({
+      dni: vet.dni || '',
+      nombres: vet.nombres || '',
+      especialidad: vet.especialidad || '',
+      colegiatura: vet.colegiatura || '',
+      telefono: vet.telefono || '',
+      correo: vet.correo || '',
+      estado: vet.estado?.toUpperCase() === 'INACTIVO' ? 'INACTIVO' : 'ACTIVO'
+    });
+    setIsModalOpen(true);
+  };
+
+  const handleDelete = async (id) => {
+    if (window.confirm('¿Estás seguro de que deseas eliminar a este veterinario? Esta acción no se puede deshacer.')) {
+      try {
+        await api.delete(`/api/veterinarios/${id}`);
+        fetchVeterinarios();
+        alert('Veterinario eliminado exitosamente');
+      } catch (err) {
+        const errorMessage = err.response?.data?.detail || 'Error al eliminar el veterinario';
+        alert(errorMessage);
+        console.error(err);
+      }
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await api.post('/api/veterinarios', formData);
+      if (editingId) {
+        await api.put(`/api/veterinarios/${editingId}`, formData);
+        alert('Veterinario actualizado exitosamente');
+      } else {
+        await api.post('/api/veterinarios', formData);
+        alert('Veterinario registrado exitosamente');
+      }
+      
       setIsModalOpen(false);
-      setFormData({
-        dni: '', nombres: '', especialidad: '',
-        colegiatura: '', telefono: '', correo: '',
-        estado: 'ACTIVO'
-      });
       fetchVeterinarios();
-      alert('Veterinario registrado exitosamente');
     } catch (err) {
-      alert('Error al registrar el veterinario');
+      alert('Error al guardar los datos del veterinario');
       console.error(err);
     }
   };
@@ -69,7 +112,7 @@ export default function VeterinariosList() {
           <h1 className="text-2xl font-bold text-gray-900">Veterinarios</h1>
           <p className="text-gray-500 text-sm mt-1">Equipo médico de la clínica</p>
         </div>
-        <Button onClick={() => setIsModalOpen(true)} className="flex items-center gap-2">
+        <Button onClick={handleOpenNew} className="flex items-center gap-2">
           <Plus className="w-4 h-4" />
           Nuevo Veterinario
         </Button>
@@ -91,6 +134,7 @@ export default function VeterinariosList() {
                   <th className="px-6 py-4 text-sm font-semibold text-gray-600">Colegiatura</th>
                   <th className="px-6 py-4 text-sm font-semibold text-gray-600">Teléfono</th>
                   <th className="px-6 py-4 text-sm font-semibold text-gray-600">Estado</th>
+                  <th className="px-6 py-4 text-sm font-semibold text-gray-600 text-center">Acciones</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
@@ -104,16 +148,32 @@ export default function VeterinariosList() {
                       <td className="px-6 py-4 text-sm text-gray-600">{vet.telefono}</td>
                       <td className="px-6 py-4 text-sm text-gray-600">
                         <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
-                          vet.estado === 'Activo' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                          vet.estado?.toUpperCase() === 'ACTIVO' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                         }`}>
-                          {vet.estado}
+                          {vet.estado || 'Activo'}
                         </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm flex justify-center gap-3">
+                        <button 
+                          onClick={() => handleEdit(vet)} 
+                          className="text-blue-600 hover:text-blue-800 transition-colors"
+                          title="Editar"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button 
+                          onClick={() => handleDelete(vet.id_veterinario || vet.id)} 
+                          className="text-red-600 hover:text-red-800 transition-colors"
+                          title="Eliminar"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="6" className="px-6 py-8 text-center text-gray-500">
+                    <td colSpan="7" className="px-6 py-8 text-center text-gray-500">
                       No se encontraron veterinarios.
                     </td>
                   </tr>
@@ -124,7 +184,7 @@ export default function VeterinariosList() {
         )}
       </div>
 
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Nuevo Veterinario">
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingId ? "Editar Veterinario" : "Nuevo Veterinario"}>
         <form onSubmit={handleSubmit} className="space-y-4 mt-2">
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -167,7 +227,7 @@ export default function VeterinariosList() {
           </div>
           <div className="mt-6 flex justify-end gap-3">
             <Button type="button" variant="secondary" onClick={() => setIsModalOpen(false)}>Cancelar</Button>
-            <Button type="submit">Guardar</Button>
+            <Button type="submit">{editingId ? "Actualizar" : "Guardar"}</Button>
           </div>
         </form>
       </Modal>

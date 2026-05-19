@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
+import { Plus, Search, ChevronLeft, ChevronRight, Calendar, Trash2 } from 'lucide-react';
 import api from '../../services/api';
 import Layout from '../../components/Layout';
 import Button from '../../components/Button';
@@ -33,14 +33,13 @@ export default function CitasList() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      // Pedimos todas las citas (limit=1000)
       const [citasRes, mascotasRes, vetsRes] = await Promise.all([
         api.get('/api/citas?limit=1000').catch(() => ({ data: [] })),
         api.get('/api/mascotas').catch(() => ({ data: [] })),
         api.get('/api/veterinarios').catch(() => ({ data: [] }))
       ]);
 
-      setMascotas(Array.isArray(mascotasRes.data) ? mascotasRes.data : []);
+      setMascotas(Array.isArray(mascotasRes.data?.data) ? mascotasRes.data.data : Array.isArray(mascotasRes.data) ? mascotasRes.data : []);
       setVeterinarios(Array.isArray(vetsRes.data) ? vetsRes.data : []);
 
       const citasData = citasRes.data?.data || citasRes.data;
@@ -56,7 +55,6 @@ export default function CitasList() {
 
   useEffect(() => { fetchData(); }, []);
 
-  // Reiniciar a la página 1 cuando se busca algo o se cambia una fecha
   useEffect(() => {
     const timer = setTimeout(() => {
       setCurrentPage(1);
@@ -80,8 +78,34 @@ export default function CitasList() {
         motivo_consulta: '', tipo_cita: '', notas_cliente: ''
       });
       fetchData();
+      alert('Cita agendada exitosamente');
     } catch (err) {
       alert('Error al registrar la cita');
+    }
+  };
+
+  // --- NUEVO: Eliminar Cita ---
+  const handleDelete = async (id) => {
+    if (window.confirm('¿Estás seguro de que deseas eliminar esta cita del sistema?')) {
+      try {
+        await api.delete(`/api/citas/${id}`);
+        fetchData();
+      } catch (err) {
+        alert('Error al eliminar la cita');
+      }
+    }
+  };
+
+  // --- NUEVO: Cambiar Estado Dinámico ---
+  const handleStatusChange = async (id, nuevoEstado) => {
+    try {
+      await api.patch(`/api/citas/${id}/estado`, { nuevoEstado });
+      // Actualizamos solo esa cita en la tabla para no hacer reload de toda la página
+      setCitas(prevCitas => prevCitas.map(cita => 
+        (cita.id_cita === id || cita.id === id) ? { ...cita, estado: nuevoEstado } : cita
+      ));
+    } catch (err) {
+      alert('Error al actualizar el estado de la cita');
     }
   };
 
@@ -95,12 +119,12 @@ export default function CitasList() {
   };
 
   const getEstadoBadgeClass = (estado) => {
-    switch (estado) {
-      case 'Confirmada': return 'bg-blue-100 text-blue-800';
-      case 'En curso': return 'bg-yellow-100 text-yellow-800';
-      case 'Pendiente': return 'bg-gray-100 text-gray-800';
-      case 'Completada': return 'bg-green-100 text-green-800';
-      case 'Cancelada': return 'bg-red-100 text-red-800';
+    const est = estado?.toUpperCase();
+    switch (est) {
+      case 'CONFIRMADA': return 'bg-blue-100 text-blue-800';
+      case 'PENDIENTE': return 'bg-yellow-100 text-yellow-800';
+      case 'COMPLETADA': return 'bg-green-100 text-green-800';
+      case 'CANCELADA': return 'bg-red-100 text-red-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
@@ -117,9 +141,7 @@ export default function CitasList() {
     return v ? v.nombres : 'Desconocido';
   };
 
-  // --- LÓGICA DE FILTRADO FRONTEND (Búsqueda + Fechas) ---
   const filteredCitas = citas.filter(cita => {
-    // 1. Filtro por Búsqueda de Texto
     let textMatch = true;
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase();
@@ -132,18 +154,11 @@ export default function CitasList() {
                   motivo.includes(searchLower);
     }
 
-    // 2. Filtro por Rango de Fechas
     let dateMatch = true;
     if (cita.fecha_hora) {
-      // Solo nos interesa la fecha (YYYY-MM-DD), ignoramos la hora para comparar
       const citaDate = new Date(cita.fecha_hora).toISOString().split('T')[0];
-      
-      if (fechaDesde && citaDate < fechaDesde) {
-        dateMatch = false;
-      }
-      if (fechaHasta && citaDate > fechaHasta) {
-        dateMatch = false;
-      }
+      if (fechaDesde && citaDate < fechaDesde) dateMatch = false;
+      if (fechaHasta && citaDate > fechaHasta) dateMatch = false;
     }
 
     return textMatch && dateMatch;
@@ -169,7 +184,6 @@ export default function CitasList() {
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-6">
         <div className="p-4 border-b border-gray-200 bg-gray-50/50">
           <div className="flex flex-col md:flex-row gap-4 items-end">
-            {/* Buscador de texto */}
             <div className="flex-1 relative w-full">
               <label className="block text-xs font-semibold text-gray-500 uppercase mb-1 tracking-wider">Buscar</label>
               <Search className="absolute left-3 top-9 -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -182,7 +196,6 @@ export default function CitasList() {
               />
             </div>
             
-            {/* Filtro Desde */}
             <div className="w-full md:w-48 relative">
               <label className="block text-xs font-semibold text-gray-500 uppercase mb-1 tracking-wider">Desde</label>
               <div className="relative">
@@ -196,7 +209,6 @@ export default function CitasList() {
               </div>
             </div>
 
-            {/* Filtro Hasta */}
             <div className="w-full md:w-48 relative">
               <label className="block text-xs font-semibold text-gray-500 uppercase mb-1 tracking-wider">Hasta</label>
               <div className="relative">
@@ -206,19 +218,18 @@ export default function CitasList() {
                   className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary outline-none text-sm text-gray-700"
                   value={fechaHasta}
                   onChange={(e) => setFechaHasta(e.target.value)}
-                  min={fechaDesde} // No permite seleccionar una fecha final anterior a la inicial
+                  min={fechaDesde}
                 />
               </div>
             </div>
 
-            {/* Botón Limpiar */}
             {(searchInput || fechaDesde || fechaHasta) && (
               <div className="pb-1">
                 <button 
                   onClick={() => { setSearchInput(''); setFechaDesde(''); setFechaHasta(''); }}
                   className="text-sm text-red-600 hover:text-red-800 font-medium px-2 py-1"
                 >
-                  Limpiar filtros
+                  Limpiar
                 </button>
               </div>
             )}
@@ -241,29 +252,47 @@ export default function CitasList() {
                     <th className="px-6 py-4 text-sm font-semibold text-gray-600">Motivo</th>
                     <th className="px-6 py-4 text-sm font-semibold text-gray-600">Tipo</th>
                     <th className="px-6 py-4 text-sm font-semibold text-gray-600">Estado</th>
+                    <th className="px-6 py-4 text-sm font-semibold text-gray-600 text-center">Acción</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
                   {currentCitas.length > 0 ? currentCitas.map((cita, idx) => (
                     <tr key={cita.id_cita || cita.id || idx} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4 text-sm text-gray-600">{formatFecha(cita.fecha_hora)}</td>
-                      <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                        <span>{getNombreMascota(cita.id_mascota, cita.nombre_mascota)}</span>
+                      <td className="px-6 py-4 text-sm font-medium text-gray-700">{formatFecha(cita.fecha_hora)}</td>
+                      <td className="px-6 py-4 text-sm font-bold text-gray-900">
+                        {getNombreMascota(cita.id_mascota, cita.nombre_mascota)}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-600">
                         {getNombreVet(cita.id_veterinario, cita.nombre_veterinario)}
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-600">{cita.motivo_consulta}</td>
+                      <td className="px-6 py-4 text-sm text-gray-600 truncate max-w-[150px]" title={cita.motivo_consulta}>{cita.motivo_consulta}</td>
                       <td className="px-6 py-4 text-sm text-gray-600">{cita.tipo_cita}</td>
                       <td className="px-6 py-4">
-                        <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${getEstadoBadgeClass(cita.estado)}`}>
-                          {cita.estado}
-                        </span>
+                        {/* SELECT INTERACTIVO PARA CAMBIAR EL ESTADO */}
+                        <select 
+                          value={cita.estado?.toUpperCase() || 'PENDIENTE'}
+                          onChange={(e) => handleStatusChange(cita.id_cita || cita.id, e.target.value)}
+                          className={`px-3 py-1 rounded-full text-xs font-bold border-0 cursor-pointer outline-none shadow-sm focus:ring-2 focus:ring-primary/50 transition-colors ${getEstadoBadgeClass(cita.estado)}`}
+                        >
+                          <option value="PENDIENTE" className="bg-white text-gray-900">Pendiente</option>
+                          <option value="CONFIRMADA" className="bg-white text-gray-900">Confirmada</option>
+                          <option value="COMPLETADA" className="bg-white text-gray-900">Completada</option>
+                          <option value="CANCELADA" className="bg-white text-gray-900">Cancelada</option>
+                        </select>
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <button 
+                          onClick={() => handleDelete(cita.id_cita || cita.id)} 
+                          className="text-red-500 hover:text-red-700 p-1.5 hover:bg-red-50 rounded-lg transition-colors"
+                          title="Eliminar cita"
+                        >
+                          <Trash2 className="w-5 h-5" />
+                        </button>
                       </td>
                     </tr>
                   )) : (
                     <tr>
-                      <td colSpan="6" className="px-6 py-12 text-center text-gray-500">
+                      <td colSpan="7" className="px-6 py-12 text-center text-gray-500">
                         <div className="flex flex-col items-center justify-center">
                            <Calendar className="w-12 h-12 text-gray-300 mb-3" />
                            <p className="text-lg font-medium text-gray-900">No hay citas en este rango</p>
@@ -280,20 +309,8 @@ export default function CitasList() {
               <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between bg-gray-50/30">
                 <p className="text-sm text-gray-500">Página {currentPage} de {totalPages}</p>
                 <nav className="flex gap-1">
-                  <button
-                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                    disabled={currentPage === 1}
-                    className="relative inline-flex items-center rounded-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 disabled:opacity-50"
-                  >
-                    <ChevronLeft className="h-5 w-5" />
-                  </button>
-                  <button
-                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                    disabled={currentPage === totalPages}
-                    className="relative inline-flex items-center rounded-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 disabled:opacity-50"
-                  >
-                    <ChevronRight className="h-5 w-5" />
-                  </button>
+                  <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="relative inline-flex items-center rounded-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 disabled:opacity-50"><ChevronLeft className="h-5 w-5" /></button>
+                  <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="relative inline-flex items-center rounded-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 disabled:opacity-50"><ChevronRight className="h-5 w-5" /></button>
                 </nav>
               </div>
             )}
@@ -301,7 +318,6 @@ export default function CitasList() {
         )}
       </div>
 
-      {/* Modal Nueva Cita */}
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Nueva Cita">
         <form onSubmit={handleSubmit} className="space-y-4 mt-2">
           <div className="grid grid-cols-2 gap-4">

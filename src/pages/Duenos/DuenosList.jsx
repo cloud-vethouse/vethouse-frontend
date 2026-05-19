@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Search, ChevronLeft, ChevronRight, Edit2, Trash2 } from 'lucide-react';
 import api from '../../services/api';
 import Layout from '../../components/Layout';
 import Button from '../../components/Button';
@@ -13,11 +13,13 @@ export default function DuenosList() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   
+  // Estado para saber si estamos editando (guarda el ID) o creando (null)
+  const [editingId, setEditingId] = useState(null);
+  
   // --- ESTADOS DE PAGINACIÓN ---
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  // CORRECCIÓN: Cambiado 'nombre' por 'nombres' para mantener consistencia con el input y el reset
   const [formData, setFormData] = useState({
     dni: '',
     nombres: '',   
@@ -43,7 +45,6 @@ export default function DuenosList() {
     fetchDuenos();
   }, []);
 
-  // Reiniciar a la página 1 cuando se busca algo
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm]);
@@ -53,22 +54,59 @@ export default function DuenosList() {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+  // Abrir modal para Crear
+  const handleOpenNew = () => {
+    setEditingId(null);
+    setFormData({ dni: '', nombres: '', telefono: '', correo: '' });
+    setIsModalOpen(true);
+  };
+
+  // Abrir modal para Editar
+  const handleEdit = (dueno) => {
+    setEditingId(dueno.id_dueno);
+    setFormData({
+      dni: dueno.dni,
+      nombres: dueno.nombres,
+      telefono: dueno.telefono,
+      correo: dueno.correo
+    });
+    setIsModalOpen(true);
+  };
+
+  // Acción Eliminar
+  const handleDelete = async (id) => {
+    if (window.confirm('¿Estás seguro de que deseas eliminar a este dueño? Esta acción no se puede deshacer.')) {
+      try {
+        await api.delete(`/api/duenos/${id}`);
+        fetchDuenos();
+        alert('Dueño eliminado exitosamente');
+      } catch (err) {
+        const errorMessage = err.response?.data?.detail || 'Error al eliminar al dueño';
+        alert(errorMessage);
+        console.error(err);
+      }
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      // Enviamos el formData completo (ahora lleva 'nombres')
-      await api.post('/api/duenos', formData);
+      if (editingId) {
+        // Actualizar dueño existente
+        await api.put(`/api/duenos/${editingId}`, formData);
+        alert('Dueño actualizado exitosamente');
+      } else {
+        // Crear nuevo dueño
+        await api.post('/api/duenos', formData);
+        alert('Dueño registrado exitosamente');
+      }
+      
       setIsModalOpen(false);
-      setFormData({
-        dni: '',
-        nombres: '', // Ahora coincide perfectamente con el estado inicial
-        telefono: '',
-        correo: ''
-      });
+      setFormData({ dni: '', nombres: '', telefono: '', correo: '' });
       fetchDuenos();
-      alert('Dueño registrado exitosamente');
     } catch (err) {
-      alert('Error al registrar al dueño');
+      const errorMessage = err.response?.data?.detail || 'Error al guardar los datos del dueño';
+      alert(errorMessage);
       console.error(err);
     }
   };
@@ -91,7 +129,7 @@ export default function DuenosList() {
           <h1 className="text-2xl font-bold text-gray-900">Dueños</h1>
           <p className="text-gray-500 text-sm mt-1">Directorio de clientes de la clínica</p>
         </div>
-        <Button onClick={() => setIsModalOpen(true)} className="flex items-center gap-2">
+        <Button onClick={handleOpenNew} className="flex items-center gap-2">
           <Plus className="w-4 h-4" />
           Nuevo Dueño
         </Button>
@@ -126,21 +164,38 @@ export default function DuenosList() {
                     <th className="px-6 py-4 text-sm font-semibold text-gray-600">DNI</th>
                     <th className="px-6 py-4 text-sm font-semibold text-gray-600">Teléfono</th>
                     <th className="px-6 py-4 text-sm font-semibold text-gray-600">Correo</th>
+                    <th className="px-6 py-4 text-sm font-semibold text-gray-600 text-center">Acciones</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
                   {currentDuenos.length > 0 ? (
                     currentDuenos.map((dueno, idx) => (
-                      <tr key={dueno.id_dueno || dueno.id || idx} className="hover:bg-gray-50 transition-colors">
+                      <tr key={dueno.id_dueno || idx} className="hover:bg-gray-50 transition-colors">
                         <td className="px-6 py-4 text-sm font-medium text-gray-900">{dueno.nombres}</td>
                         <td className="px-6 py-4 text-sm text-gray-600">{dueno.dni}</td>
                         <td className="px-6 py-4 text-sm text-gray-600">{dueno.telefono}</td>
                         <td className="px-6 py-4 text-sm text-gray-600">{dueno.correo}</td>
+                        <td className="px-6 py-4 text-sm flex justify-center gap-3">
+                          <button 
+                            onClick={() => handleEdit(dueno)} 
+                            className="text-blue-600 hover:text-blue-800 transition-colors"
+                            title="Editar"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button 
+                            onClick={() => handleDelete(dueno.id_dueno)} 
+                            className="text-red-600 hover:text-red-800 transition-colors"
+                            title="Eliminar"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </td>
                       </tr>
                     ))
                   ) : (
                     <tr>
-                      <td colSpan="4" className="px-6 py-8 text-center text-gray-500">
+                      <td colSpan="5" className="px-6 py-8 text-center text-gray-500">
                         No se encontraron dueños.
                       </td>
                     </tr>
@@ -180,11 +235,12 @@ export default function DuenosList() {
         )}
       </div>
 
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Nuevo Dueño">
+      {/* Modal que cambia su título dependiendo de la acción */}
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingId ? "Editar Dueño" : "Nuevo Dueño"}>
         <form onSubmit={handleSubmit} className="space-y-4 mt-2">
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Nombre y Apellidos*</label>
+            <div className="col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Nombre y Apellidos *</label>
               <input required type="text" name="nombres" value={formData.nombres} onChange={handleInputChange} className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary outline-none" />
             </div>
           </div>
@@ -204,7 +260,7 @@ export default function DuenosList() {
           </div>
           <div className="mt-6 flex justify-end gap-3">
             <Button type="button" variant="secondary" onClick={() => setIsModalOpen(false)}>Cancelar</Button>
-            <Button type="submit">Guardar</Button>
+            <Button type="submit">{editingId ? "Actualizar" : "Guardar"}</Button>
           </div>
         </form>
       </Modal>

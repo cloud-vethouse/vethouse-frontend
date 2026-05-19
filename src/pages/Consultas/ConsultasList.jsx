@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, ChevronLeft, ChevronRight, Eye } from 'lucide-react';
+import { Plus, Search, ChevronLeft, ChevronRight, Eye, Edit2, Trash2 } from 'lucide-react';
 import api from '../../services/api';
 import Layout from '../../components/Layout';
 import Button from '../../components/Button';
@@ -24,6 +24,7 @@ export default function ConsultasList() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [selectedConsulta, setSelectedConsulta] = useState(null);
+  const [editingId, setEditingId] = useState(null); // NUEVO
   
   const [formData, setFormData] = useState({
     id_cita: '', id_mascota: '', id_veterinario: '', fecha_atencion: '',
@@ -36,18 +37,19 @@ export default function ConsultasList() {
       setLoading(true);
       const [consRes, mascotasRes, vetsRes, citasRes] = await Promise.all([
         api.get(`/api/consultas?page=${page}&limit=${limit}&search=${searchTerm}`),
-        api.get('/api/mascotas'),
+        api.get('/api/mascotas?limit=1000'), // <--- AHORA TRAE TODAS LAS MASCOTAS
         api.get('/api/veterinarios'),
-        api.get('/api/citas')
+        api.get('/api/citas?limit=1000')     // <--- AHORA TRAE TODAS LAS CITAS PREVIAS
       ]);
 
       const consultasData = consRes.data?.data || consRes.data;
       setConsultas(Array.isArray(consultasData) ? consultasData : []);
       if (consRes.data?.pagination) setTotalPages(consRes.data.pagination.totalPages);
 
-      setMascotas(Array.isArray(mascotasRes.data) ? mascotasRes.data : []);
+      // Compatibilidad con las respuestas paginadas
+      setMascotas(Array.isArray(mascotasRes.data?.data) ? mascotasRes.data.data : Array.isArray(mascotasRes.data) ? mascotasRes.data : []);
       setVeterinarios(Array.isArray(vetsRes.data) ? vetsRes.data : []);
-      setCitas(Array.isArray(citasRes.data) ? citasRes.data : []);
+      setCitas(Array.isArray(citasRes.data?.data) ? citasRes.data.data : Array.isArray(citasRes.data) ? citasRes.data : []);
       setError(null);
     } catch (err) {
       setError('Error al cargar los datos.');
@@ -68,6 +70,49 @@ export default function ConsultasList() {
 
   const handleInputChange = (e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
 
+  // NUEVO: Abrir modal para crear
+  const handleOpenNew = () => {
+    setEditingId(null);
+    setFormData({ id_cita: '', id_mascota: '', id_veterinario: '', fecha_atencion: '', sintomas: '', diagnostico: '', tratamiento_tipo: '', tratamiento_desc: '', costo_referencial: '', estado: 'Completado' });
+    setIsCreateModalOpen(true);
+  };
+
+  // NUEVO: Abrir modal para editar
+  const handleEdit = (consulta) => {
+    setEditingId(consulta.id_consulta || consulta._id);
+    
+    // Extraer el primer tratamiento si existe
+    const t = consulta.tratamientos && consulta.tratamientos.length > 0 ? consulta.tratamientos[0] : {};
+    
+    setFormData({
+      id_cita: consulta.id_cita || '',
+      id_mascota: consulta.id_mascota || '',
+      id_veterinario: consulta.id_veterinario || '',
+      // Formateo especial para input datetime-local
+      fecha_atencion: consulta.fecha_atencion ? new Date(consulta.fecha_atencion).toISOString().slice(0, 16) : '',
+      sintomas: consulta.sintomas || '',
+      diagnostico: consulta.diagnostico || '',
+      tratamiento_tipo: t.tipo || '',
+      tratamiento_desc: t.descripcion || '',
+      costo_referencial: t.costo_referencial || '',
+      estado: t.estado || 'Completado'
+    });
+    setIsCreateModalOpen(true);
+  };
+
+  // NUEVO: Eliminar Consulta
+  const handleDelete = async (id) => {
+    if (window.confirm('¿Eliminar definitivamente este registro clínico?')) {
+      try {
+        await api.delete(`/api/consultas/${id}`);
+        fetchData();
+        alert('Registro eliminado exitosamente');
+      } catch (err) {
+        alert('Error al eliminar el registro');
+      }
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
@@ -82,12 +127,18 @@ export default function ConsultasList() {
         }] : []
       };
 
-      await api.post('/api/consultas', payload);
+      if (editingId) {
+        await api.put(`/api/consultas/${editingId}`, payload);
+        alert('Consulta médica actualizada');
+      } else {
+        await api.post('/api/consultas', payload);
+        alert('Consulta médica registrada con éxito');
+      }
+      
       setIsCreateModalOpen(false);
-      setFormData({ id_cita: '', id_mascota: '', id_veterinario: '', fecha_atencion: '', sintomas: '', diagnostico: '', tratamiento_tipo: '', tratamiento_desc: '', costo_referencial: '', estado: 'Completado' });
       fetchData();
     } catch (err) {
-      alert('Error al registrar la consulta');
+      alert('Error al procesar la consulta');
     }
   };
 
@@ -104,7 +155,7 @@ export default function ConsultasList() {
           <h1 className="text-2xl font-bold text-gray-900">Consultas Clínicas</h1>
           <p className="text-gray-500 text-sm mt-1">Historial unificado de consultas y procedimientos médicos</p>
         </div>
-        <Button onClick={() => setIsCreateModalOpen(true)} className="flex items-center gap-2">
+        <Button onClick={handleOpenNew} className="flex items-center gap-2">
           <Plus className="w-4 h-4" /> Nueva Consulta
         </Button>
       </div>
@@ -113,7 +164,7 @@ export default function ConsultasList() {
         <div className="p-4 border-b border-gray-200">
           <div className="relative max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <input type="text" placeholder="Buscar por mascota o síntoma..." className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary outline-none" value={searchInput} onChange={(e) => setSearchInput(e.target.value)} />
+            <input type="text" placeholder="Buscar por mascota o síntoma..." className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary outline-none transition-all" value={searchInput} onChange={(e) => setSearchInput(e.target.value)} />
           </div>
         </div>
 
@@ -132,14 +183,20 @@ export default function ConsultasList() {
                 </thead>
                 <tbody className="divide-y divide-gray-200">
                   {consultas.length > 0 ? consultas.map((consulta, idx) => (
-                    <tr key={consulta._id || idx} className="hover:bg-gray-50 transition-colors">
+                    <tr key={consulta.id_consulta || consulta._id || idx} className="hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4 text-sm text-gray-600">{formatFecha(consulta.fecha_atencion)}</td>
                       <td className="px-6 py-4 text-sm font-medium text-gray-900">{consulta.nombre_mascota}</td>
                       <td className="px-6 py-4 text-sm text-gray-600">{consulta.nombre_veterinario}</td>
                       <td className="px-6 py-4 text-sm text-gray-600 truncate max-w-[200px]">{consulta.diagnostico}</td>
-                      <td className="px-6 py-4 text-center">
+                      <td className="px-6 py-4 text-center flex justify-center gap-2">
                         <button onClick={() => { setSelectedConsulta(consulta); setIsViewModalOpen(true); }} className="p-2 text-primary hover:bg-primary/10 rounded-lg" title="Ver Detalles">
-                          <Eye className="w-5 h-5 mx-auto" />
+                          <Eye className="w-4 h-4" />
+                        </button>
+                        <button onClick={() => handleEdit(consulta)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg" title="Editar">
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button onClick={() => handleDelete(consulta.id_consulta || consulta._id)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg" title="Eliminar">
+                          <Trash2 className="w-4 h-4" />
                         </button>
                       </td>
                     </tr>
@@ -148,7 +205,6 @@ export default function ConsultasList() {
               </table>
             </div>
 
-            {/* Paginación */}
             {totalPages > 1 && (
               <div className="flex items-center justify-between border-t border-gray-200 bg-white px-4 py-3 sm:px-6">
                 <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
@@ -164,36 +220,36 @@ export default function ConsultasList() {
         )}
       </div>
 
-      {/* MODAL 1: CREAR CONSULTA */}
-      <Modal isOpen={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} title="Registrar Consulta">
+      {/* MODAL 1: CREAR/EDITAR CONSULTA */}
+      <Modal isOpen={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} title={editingId ? "Editar Consulta" : "Registrar Consulta"}>
         <form onSubmit={handleSubmit} className="space-y-4 mt-2 overflow-y-auto max-h-[70vh] pr-2">
           <div className="grid grid-cols-2 gap-4">
              <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Mascota *</label>
-              <select required name="id_mascota" value={formData.id_mascota} onChange={handleInputChange} className="w-full p-2 border border-gray-300 rounded-lg">
+              <select required name="id_mascota" value={formData.id_mascota} onChange={handleInputChange} className="w-full p-2 border border-gray-300 rounded-lg outline-none">
                 <option value="">Seleccionar...</option>
-                {mascotas.map(m => <option key={m.id_mascota} value={m.id_mascota}>{m.nombre}</option>)}
+                {mascotas.map(m => <option key={m.id_mascota || m.id} value={m.id_mascota || m.id}>{m.nombre}</option>)}
               </select>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Veterinario *</label>
-              <select required name="id_veterinario" value={formData.id_veterinario} onChange={handleInputChange} className="w-full p-2 border border-gray-300 rounded-lg">
+              <select required name="id_veterinario" value={formData.id_veterinario} onChange={handleInputChange} className="w-full p-2 border border-gray-300 rounded-lg outline-none">
                 <option value="">Seleccionar...</option>
-                {veterinarios.map(v => <option key={v.id_veterinario} value={v.id_veterinario}>{v.nombres}</option>)}
+                {veterinarios.map(v => <option key={v.id_veterinario || v.id} value={v.id_veterinario || v.id}>{v.nombres}</option>)}
               </select>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Cita Previa</label>
-              <select name="id_cita" value={formData.id_cita} onChange={handleInputChange} className="w-full p-2 border border-gray-300 rounded-lg">
+              <select name="id_cita" value={formData.id_cita} onChange={handleInputChange} className="w-full p-2 border border-gray-300 rounded-lg outline-none">
                 <option value="">Opcional...</option>
-                {citas.map(c => <option key={c.id_cita} value={c.id_cita}>{formatFecha(c.fecha_hora)} - {c.nombre_mascota}</option>)}
+                {citas.map(c => <option key={c.id_cita || c.id} value={c.id_cita || c.id}>{formatFecha(c.fecha_hora)} - {c.nombre_mascota}</option>)}
               </select>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Fecha *</label>
-              <input required type="datetime-local" name="fecha_atencion" value={formData.fecha_atencion} onChange={handleInputChange} className="w-full p-2 border border-gray-300 rounded-lg" />
+              <input required type="datetime-local" name="fecha_atencion" value={formData.fecha_atencion} onChange={handleInputChange} className="w-full p-2 border border-gray-300 rounded-lg outline-none" />
             </div>
           </div>
           <div>
@@ -215,7 +271,7 @@ export default function ConsultasList() {
               <input type="text" name="tratamiento_desc" value={formData.tratamiento_desc} onChange={handleInputChange} className="w-full p-2 border border-gray-300 rounded-lg text-sm outline-none" placeholder="Descripción detallada..." />
               <div className="relative">
                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">S/</span>
-                 <input type="number" name="costo_referencial" value={formData.costo_referencial} onChange={handleInputChange} className="w-full pl-8 pr-2 py-2 border border-gray-300 rounded-lg text-sm outline-none" placeholder="Costo" />
+                 <input type="number" step="0.01" name="costo_referencial" value={formData.costo_referencial} onChange={handleInputChange} className="w-full pl-8 pr-2 py-2 border border-gray-300 rounded-lg text-sm outline-none" placeholder="Costo" />
               </div>
               <select name="estado" value={formData.estado} onChange={handleInputChange} className="w-full p-2 border border-gray-300 rounded-lg text-sm outline-none">
                 <option value="Completado">Completado</option>
@@ -226,12 +282,12 @@ export default function ConsultasList() {
           </div>
           <div className="mt-4 flex justify-end gap-3">
              <Button type="button" variant="secondary" onClick={() => setIsCreateModalOpen(false)}>Cancelar</Button>
-             <Button type="submit">Guardar Consulta</Button>
+             <Button type="submit">{editingId ? "Actualizar Consulta" : "Guardar Consulta"}</Button>
           </div>
         </form>
       </Modal>
 
-      {/* MODAL 2: VER DETALLES (Pop-up con todo incluido) */}
+      {/* MODAL 2: VER DETALLES */}
       <Modal isOpen={isViewModalOpen} onClose={() => setIsViewModalOpen(false)} title="Detalles Clínicos de la Consulta">
         {selectedConsulta && (
           <div className="space-y-4 mt-2 overflow-y-auto max-h-[70vh] pr-2">
@@ -287,7 +343,7 @@ export default function ConsultasList() {
             </div>
 
             <div className="mt-6 flex justify-end sticky bottom-0 bg-white pt-2">
-              <Button type="button" onClick={() => setIsViewModalOpen(false)}>Cerrar Historial</Button>
+              <Button type="button" onClick={() => setIsViewModalOpen(false)}>Cerrar</Button>
             </div>
           </div>
         )}
