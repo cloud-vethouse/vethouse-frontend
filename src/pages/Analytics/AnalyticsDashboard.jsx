@@ -24,32 +24,27 @@ export default function AnalyticsDashboard() {
     const fetchAnalytics = async () => {
       try {
         setLoading(true);
-        // Usamos Promise.allSettled o manejamos errores por endpoint para no fallar todo si uno cae
+        // Hacemos las peticiones sin el .catch anidado para que falle limpiamente si hay error
         const [enfRes, citasRes, espRes, tratRes] = await Promise.all([
-          api.get('/api/analytics/enfermedades').catch(() => ({ data: [
-            { enfermedad: 'Parvovirus', casos: 15 }, { enfermedad: 'Moquillo', casos: 8 }, { enfermedad: 'Rabia', casos: 2 } // Mock en caso de error para demo
-          ]})),
-          api.get('/api/analytics/citas-por-mes').catch(() => ({ data: [
-            { mes: 'Ene', citas: 45 }, { mes: 'Feb', citas: 52 }, { mes: 'Mar', citas: 38 }, { mes: 'Abr', citas: 65 } // Mock
-          ]})),
-          api.get('/api/analytics/especies').catch(() => ({ data: [
-            { especie: 'Perro', value: 60 }, { especie: 'Gato', value: 30 }, { especie: 'Otros', value: 10 } // Mock
-          ]})),
-          api.get('/api/analytics/tratamientos').catch(() => ({ data: [
-            { tratamiento: 'Vacunación', frecuencia: 120 }, { tratamiento: 'Desparasitación', frecuencia: 85 } // Mock
-          ]}))
+          api.get('/api/analytics/enfermedades'),
+          api.get('/api/analytics/citas-por-mes'),
+          api.get('/api/analytics/especies'),
+          api.get('/api/analytics/tratamientos')
         ]);
 
+        // Función a prueba de balas para extraer el array (sirve para Axios o Fetch)
+        const getArray = (res) => Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : []);
+
         setData({
-          enfermedades: Array.isArray(enfRes.data) ? enfRes.data : [],
-          citasMes: Array.isArray(citasRes.data) ? citasRes.data : [],
-          especies: Array.isArray(espRes.data) ? espRes.data : [],
-          tratamientos: Array.isArray(tratRes.data) ? tratRes.data : []
+          enfermedades: getArray(enfRes),
+          citasMes: getArray(citasRes),
+          especies: getArray(espRes),
+          tratamientos: getArray(tratRes)
         });
         setError(null);
       } catch (err) {
         setError('Error al cargar métricas de análisis. Por favor, revise la conexión con el servidor.');
-        console.error(err);
+        console.error("Error en Promise.all analytics:", err);
       } finally {
         setLoading(false);
       }
